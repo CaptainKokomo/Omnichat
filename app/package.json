@@ -1,0 +1,82 @@
+{
+  "name": "omnichat-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows-compatible desktop AI orchestrator supporting multi-model chats and tool integrations.",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development npm run build:main && concurrently \"npm:dev:renderer\" \"npm:watch:main\" \"npm:start:electron\"",
+    "dev:renderer": "vite",
+    "watch:main": "tsc --project electron/tsconfig.json --watch --preserveWatchOutput",
+    "start:electron": "wait-on http://localhost:5173 && electron dist/electron/main.dev.js",
+    "build": "rimraf dist && npm run build:main && npm run build:renderer",
+    "build:main": "tsc --project electron/tsconfig.json",
+    "build:renderer": "vite build",
+    "lint": "eslint \"{src,electron}/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && electron-builder --win portable nsis",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "undici": "^6.22.0",
+    "uuid": "^9.0.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.8.0",
+    "@typescript-eslint/parser": "^6.8.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "eslint": "^8.52.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.omnichat.desktop",
+    "productName": "Omnichat",
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "portable",
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Omnichat-${version}-${arch}.${ext}"
+    }
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
