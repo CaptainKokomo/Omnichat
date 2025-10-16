@@ -5,9 +5,9 @@ Omnichat is a Windows-focused desktop AI chat orchestrator that coordinates mult
 ## Key Features
 - Multi-session chat workspace that automatically persists history, titles, and system prompts across restarts.
 - Session management UI with quick create/delete controls and automatic fallback when the last session is removed.
-- Provider registry with enable/disable controls and a mock multi-model conversation engine for rapid prototyping.
+- Provider registry with enable/disable controls plus local-first connectors (mock engines, Ollama, browser-tab bridge).
 - Windows-friendly packaging (portable EXE + installer) via `electron-builder`.
-- Roadmap: additional AI providers (GPT, Claude, Gemini, Copilot, Ollama, custom), inter-model relays, and tool execution.
+- Roadmap: additional offline-friendly connectors (LM Studio, ComfyUI, local scripts), inter-model relays, and tool execution.
 
 ## Repository Layout
 ```
@@ -62,10 +62,10 @@ Artifacts are emitted to `app/release/` as portable and NSIS installer binaries.
 - **State Management**: Zustand store tracks session history and metadata (`app/src/state`).
 
 ## Next Steps
-1. Integrate real OpenAI/GPT provider via REST client.
-2. Add secure credential vaulting and environment variable support.
-3. Implement inter-model relay controls and tool execution pipeline.
-4. Extend settings UI for detailed provider configuration, per-session prompts, and tool management.
+1. Ship Ollama + LM Studio presets with per-model chat settings and streaming support.
+2. Harden the browser-tab bridge with ready-state checks, sandboxing, and per-tab visibility controls.
+3. Implement inter-model relay controls and tool execution pipeline (e.g., ComfyUI, local scripts, plugin adapters).
+4. Extend settings UI for provider templating, environment profile switching, and shared prompt libraries.
 5. Configure automated testing (unit + E2E) and CI packaging workflows.
 
 ## Sharing the Project with GitHub or Other Destinations

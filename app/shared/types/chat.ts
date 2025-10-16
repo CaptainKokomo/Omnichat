@@ -29,18 +29,42 @@ export interface ProviderMessage {
   modelId: string;
 }
 
-export type ProviderType = 'openai' | 'claude' | 'gemini' | 'copilot' | 'ollama' | 'mock' | 'custom';
+export type ProviderType = 'mock' | 'ollama' | 'browser-tab' | 'custom';
 
-export interface ProviderConfigPayload {
+export interface OllamaProviderOptions {
+  baseUrl?: string;
+  model?: string;
+  stream?: boolean;
+  keepAlive?: boolean;
+}
+
+export interface BrowserTabProviderOptions {
+  url: string;
+  readySelector?: string;
+  waitTimeoutMs?: number;
+  script?: string;
+  initScript?: string;
+  showWindow?: boolean;
+  width?: number;
+  height?: number;
+}
+
+export interface ProviderConfigPayloadBase<TType extends ProviderType = ProviderType> {
   id: string;
   label: string;
-  type: ProviderType;
+  type: TType;
   enabled: boolean;
   apiKey?: string;
   baseUrl?: string;
   model?: string;
-  options?: Record<string, unknown>;
 }
+
+export type ProviderConfigPayload<TType extends ProviderType = ProviderType> = ProviderConfigPayloadBase<TType> &
+  (TType extends 'ollama'
+    ? { options?: Partial<OllamaProviderOptions> }
+    : TType extends 'browser-tab'
+    ? { options?: Partial<BrowserTabProviderOptions> }
+    : { options?: Record<string, unknown> });
 
 export interface SessionState {
   sessionId: string;

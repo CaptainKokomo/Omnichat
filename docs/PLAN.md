@@ -15,8 +15,8 @@
    - Implement a configuration manager that persists workspace settings (models, API keys, tool paths) to JSON files within the user data directory.
    - Build a session manager to handle multiple chat tabs with unique system prompts.
 3. **Model Providers Integration**
-   - Abstract model providers via a unified interface, enabling GPT, Claude, Gemini, Copilot, and Ollama.
-   - Support both HTTP-based providers and local connectors (e.g., Ollama REST, ComfyUI workflows).
+   - Abstract model providers via a unified interface focused on local-first connectors (Ollama, LM Studio, browser-tab bridges).
+   - Support HTTP-based local runtimes and DOM-automation bridges for hosted chat UIs.
    - Allow tool execution via Node child processes or HTTP client modules.
 4. **Conversation Orchestration**
    - Implement a conversation engine that:
@@ -53,8 +53,8 @@
 ## 4. Milestones
 1. Scaffold project and implement IPC skeleton. *(Current work)*
 2. Basic chat UI with fake model responses for testing the loop.
-3. Integrate real OpenAI/GPT API via provider abstraction.
-4. Add additional providers (Ollama, Claude, Gemini, Copilot).
+3. Ship production-ready Ollama adapter with streaming.
+4. Add additional offline providers (LM Studio, local script runners, browser-tab automation).
 5. Implement tool execution pipeline and inter-model collaboration features.
 6. Polish UI, add packaging scripts, and produce installer.
 

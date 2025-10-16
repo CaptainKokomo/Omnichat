@@ -1,8 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import type {
+  BrowserTabProviderOptions,
   ChatMessage,
   ChatRequest,
   ModelConfigPayload,
+  OllamaProviderOptions,
   ProviderConfigPayload,
   SessionCreatePayload,
   SessionState
@@ -20,16 +22,42 @@ export interface OmnichatAPI {
 const DEFAULT_SYSTEM_PROMPT = 'You are Omnichat, a helpful multi-model assistant.';
 const DEFAULT_SESSION_TITLE = 'Getting started';
 
+const DEFAULT_BROWSER_SCRIPT = `async function handlePrompt(ctx) {
+  if (window.omnichatBridge && typeof window.omnichatBridge.handlePrompt === 'function') {
+    const reply = await window.omnichatBridge.handlePrompt(ctx);
+    if (typeof reply === 'string') {
+      return reply;
+    }
+    if (reply && typeof reply === 'object' && 'content' in reply) {
+      return String(reply.content ?? '');
+    }
+    return JSON.stringify(reply ?? {});
+  }
+  return 'window.omnichatBridge.handlePrompt(ctx) is not defined in this tab.';
+}`;
+
 const DEFAULT_PROVIDERS: ProviderConfigPayload[] = [
   { id: 'mock-gpt', label: 'Mock GPT', type: 'mock', enabled: true },
   { id: 'mock-claude', label: 'Mock Claude', type: 'mock', enabled: true },
   {
-    id: 'openai-gpt-4o-mini',
-    label: 'OpenAI GPT-4o mini',
-    type: 'openai',
+    id: 'ollama-local',
+    label: 'Ollama (local)',
+    type: 'ollama',
     enabled: false,
-    model: 'gpt-4o-mini',
-    baseUrl: 'https://api.openai.com/v1'
+    model: 'llama3',
+    baseUrl: 'http://127.0.0.1:11434',
+    options: { keepAlive: true, stream: false } satisfies Partial<OllamaProviderOptions>
+  },
+  {
+    id: 'browser-bridge',
+    label: 'Browser Bridge',
+    type: 'browser-tab',
+    enabled: false,
+    options: {
+      url: 'http://localhost:3000',
+      script: DEFAULT_BROWSER_SCRIPT,
+      waitTimeoutMs: 15000
+    } satisfies Partial<BrowserTabProviderOptions>
   }
 ];
 
@@ -146,9 +174,14 @@ function createFallbackApi(): OmnichatAPI {
         history.push({
           id: uuid(),
           role: 'assistant',
-          content: provider.type === 'mock'
-            ? `(${provider.label}) ${request.message ? `Echo: ${request.message}` : 'Ready to help.'}`
-            : `${provider.label} received your message. Configure credentials to enable live replies.`,
+          content:
+            provider.type === 'mock'
+              ? `(${provider.label}) ${request.message ? `Echo: ${request.message}` : 'Ready to help.'}`
+              : provider.type === 'ollama'
+              ? `${provider.label} is disabled. Start Ollama locally and enable the provider to stream real responses.`
+              : provider.type === 'browser-tab'
+              ? `${provider.label} is waiting for a bridge script. Expose window.omnichatBridge.handlePrompt(ctx) in the target tab to exchange messages.`
+              : `${provider.label} is disabled. Enable or configure the provider to activate replies.`,
           createdAt: new Date().toISOString(),
           modelId: provider.id,
           metadata: { provider: provider.id, mock: true }

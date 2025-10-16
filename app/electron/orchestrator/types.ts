@@ -19,6 +19,7 @@ export interface ProviderInstance {
   readonly id: string;
   readonly config: ProviderConfig;
   generate(request: ProviderGenerateRequest): Promise<ProviderGenerateResponse>;
+  dispose?(): Promise<void> | void;
 }
 
 export interface PersistedConfig {

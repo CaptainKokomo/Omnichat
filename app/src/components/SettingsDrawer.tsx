@@ -34,7 +34,11 @@ export function SettingsDrawer({
     );
   };
 
-  const handleFieldChange = (providerId: string, field: 'apiKey' | 'baseUrl' | 'model', value: string) => {
+  const handleFieldChange = (
+    providerId: string,
+    field: 'apiKey' | 'baseUrl' | 'model' | 'label',
+    value: string
+  ) => {
     setLocalProviders((prev) =>
       prev.map((provider) =>
         provider.id === providerId
@@ -45,6 +49,126 @@ export function SettingsDrawer({
           : provider
       )
     );
+  };
+
+  const handleOptionChange = (providerId: string, key: string, value: string | boolean | number) => {
+    setLocalProviders((prev) =>
+      prev.map((provider) => {
+        if (provider.id !== providerId) {
+          return provider;
+        }
+        const current = (provider.options ?? {}) as Record<string, unknown>;
+        const options: Record<string, unknown> = { ...current };
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed.length === 0) {
+            delete options[key];
+          } else {
+            options[key] = value;
+          }
+        } else {
+          options[key] = value;
+        }
+        return {
+          ...provider,
+          options: Object.keys(options).length === 0 ? undefined : options
+        };
+      })
+    );
+  };
+
+  const renderProviderFields = (provider: ProviderConfigPayload) => {
+    switch (provider.type) {
+      case 'ollama':
+        return (
+          <div className="provider-fields">
+            <label>
+              Base URL
+              <input
+                type="text"
+                placeholder="http://127.0.0.1:11434"
+                value={provider.baseUrl ?? ''}
+                onChange={(event) => handleFieldChange(provider.id, 'baseUrl', event.target.value)}
+              />
+            </label>
+            <label>
+              Model
+              <input
+                type="text"
+                placeholder="llama3"
+                value={provider.model ?? ''}
+                onChange={(event) => handleFieldChange(provider.id, 'model', event.target.value)}
+              />
+            </label>
+            <p className="provider-hint">
+              Ensure the Ollama daemon is running locally (<code>ollama serve</code>) and the selected model is pulled.
+            </p>
+          </div>
+        );
+      case 'browser-tab': {
+        const options = provider.options as Record<string, unknown> | undefined;
+        const url = typeof options?.url === 'string' ? options.url : '';
+        const script = typeof options?.script === 'string' ? options.script : '';
+        const waitTimeoutMs =
+          typeof options?.waitTimeoutMs === 'number' ? String(options.waitTimeoutMs) : '';
+        const showWindow = typeof options?.showWindow === 'boolean' ? options.showWindow : false;
+
+        return (
+          <div className="provider-fields">
+            <label>
+              Tab URL
+              <input
+                type="text"
+                placeholder="http://localhost:3000"
+                value={url}
+                onChange={(event) => handleOptionChange(provider.id, 'url', event.target.value)}
+              />
+            </label>
+            <label>
+              Wait timeout (ms)
+              <input
+                type="number"
+                min={1000}
+                step={500}
+                value={waitTimeoutMs}
+                onChange={(event) => {
+                  const numeric = Number(event.target.value);
+                  handleOptionChange(
+                    provider.id,
+                    'waitTimeoutMs',
+                    Number.isNaN(numeric) ? '' : numeric
+                  );
+                }}
+              />
+            </label>
+            <label>
+              Bridge script
+              <textarea
+                rows={6}
+                spellCheck={false}
+                value={script}
+                onChange={(event) => handleOptionChange(provider.id, 'script', event.target.value)}
+              />
+            </label>
+            <label className="checkbox-inline">
+              <input
+                type="checkbox"
+                checked={showWindow}
+                onChange={(event) => handleOptionChange(provider.id, 'showWindow', event.target.checked)}
+              />
+              Keep the browser tab visible during conversations
+            </label>
+            <p className="provider-hint">
+              The script runs inside the target page. Expose <code>window.omnichatBridge.handlePrompt(ctx)</code> or
+              customize the script to control the page DOM.
+            </p>
+          </div>
+        );
+      }
+      case 'custom':
+      default:
+        return null;
+    }
   };
 
   const handleSave = async () => {
@@ -88,43 +212,7 @@ export function SettingsDrawer({
                   </span>
                 </label>
               </div>
-              {provider.type === 'openai' ? (
-                <div className="provider-fields">
-                  <label>
-                    API Key
-                    <input
-                      type="password"
-                      placeholder="sk-..."
-                      value={provider.apiKey ?? ''}
-                      onChange={(event) =>
-                        handleFieldChange(provider.id, 'apiKey', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    Model
-                    <input
-                      type="text"
-                      placeholder="gpt-4o-mini"
-                      value={provider.model ?? ''}
-                      onChange={(event) =>
-                        handleFieldChange(provider.id, 'model', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    Base URL
-                    <input
-                      type="text"
-                      placeholder="https://api.openai.com/v1"
-                      value={provider.baseUrl ?? ''}
-                      onChange={(event) =>
-                        handleFieldChange(provider.id, 'baseUrl', event.target.value)
-                      }
-                    />
-                  </label>
-                </div>
-              ) : null}
+              {renderProviderFields(provider)}
             </li>
           ))}
           {localProviders.length === 0 ? <p>No providers configured yet.</p> : null}

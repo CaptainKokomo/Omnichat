@@ -1,5 +1,6 @@
 import { MockProvider } from '../providers/mockProvider';
-import { OpenAIProvider } from '../providers/openaiProvider';
+import { OllamaProvider } from '../providers/ollamaProvider';
+import { BrowserTabProvider } from '../providers/browserTabProvider';
 import type { ProviderConfig, ProviderInstance } from '../types';
 
 export class ProviderRegistry {
@@ -24,10 +25,23 @@ export class ProviderRegistry {
   }
 
   upsertProviders(configs: ProviderConfig[]): void {
+    const nextProviders = new Map<string, ProviderInstance>();
+
     for (const config of configs) {
+      const existing = this.providers.get(config.id);
+      this.disposeProvider(existing, `replacing provider ${config.id}`);
+
       const instance = this.instantiate(config);
-      this.providers.set(config.id, instance);
+      nextProviders.set(config.id, instance);
     }
+
+    for (const [id, instance] of this.providers.entries()) {
+      if (!nextProviders.has(id)) {
+        this.disposeProvider(instance, `removing provider ${id}`);
+      }
+    }
+
+    this.providers = nextProviders;
   }
 
   getActiveProviders(modelIds?: string[]): ProviderInstance[] {
@@ -40,11 +54,30 @@ export class ProviderRegistry {
 
   private instantiate(config: ProviderConfig): ProviderInstance {
     switch (config.type) {
-      case 'openai':
-        return new OpenAIProvider(config);
+      case 'ollama':
+        return new OllamaProvider(config);
+      case 'browser-tab':
+        return new BrowserTabProvider(config);
       case 'mock':
       default:
         return new MockProvider(config);
+    }
+  }
+
+  private disposeProvider(instance: ProviderInstance | undefined, context: string): void {
+    if (!instance || typeof instance.dispose !== 'function') {
+      return;
+    }
+
+    try {
+      const result = instance.dispose();
+      if (result && typeof (result as Promise<unknown>).catch === 'function') {
+        (result as Promise<unknown>).catch((error) =>
+          console.warn('Provider disposal rejected', context, error)
+        );
+      }
+    } catch (error) {
+      console.warn('Failed to dispose provider', context, error);
     }
   }
 }

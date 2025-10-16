@@ -307,7 +307,8 @@ body, html, #root {
   font-size: 0.85rem;
 }
 
-.settings-drawer .provider-fields input {
+.settings-drawer .provider-fields input,
+.settings-drawer .provider-fields textarea {
   padding: 0.65rem 0.75rem;
   border-radius: 0.6rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -315,10 +316,37 @@ body, html, #root {
   color: inherit;
 }
 
-.settings-drawer .provider-fields input:focus {
+.settings-drawer .provider-fields input:focus,
+.settings-drawer .provider-fields textarea:focus {
   outline: none;
   border-color: #21cbf3;
   box-shadow: 0 0 0 2px rgba(33, 203, 243, 0.2);
+}
+
+.settings-drawer .provider-fields textarea {
+  resize: vertical;
+  min-height: 8rem;
+  font-family: 'Fira Code', 'JetBrains Mono', Menlo, Monaco, 'Courier New', monospace;
+  line-height: 1.4;
+}
+
+.settings-drawer .provider-fields .checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.settings-drawer .provider-fields .checkbox-inline input {
+  width: auto;
+  padding: 0;
+}
+
+.settings-drawer .provider-fields .provider-hint {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
 }
 
 .settings-drawer footer {

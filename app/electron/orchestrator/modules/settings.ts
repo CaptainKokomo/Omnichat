@@ -2,9 +2,62 @@ import path from 'path';
 import { app } from 'electron';
 import { promises as fs } from 'fs';
 import type { PersistedConfig } from '../types';
-import type { SessionState } from '@shared/types/chat';
+import type { ProviderConfigPayload, SessionState } from '@shared/types/chat';
 
 const CONFIG_FILE = 'settings.json';
+
+const DEFAULT_BROWSER_SCRIPT = `async function handlePrompt(ctx) {
+  if (window.omnichatBridge && typeof window.omnichatBridge.handlePrompt === 'function') {
+    const reply = await window.omnichatBridge.handlePrompt(ctx);
+    if (typeof reply === 'string') {
+      return reply;
+    }
+    if (reply && typeof reply === 'object' && 'content' in reply) {
+      return String(reply.content ?? '');
+    }
+    return JSON.stringify(reply ?? {});
+  }
+  return 'window.omnichatBridge.handlePrompt(ctx) is not defined in this tab.';
+}`;
+
+const DEFAULT_PROVIDERS: ProviderConfigPayload[] = [
+  { id: 'mock-gpt', label: 'Mock GPT', type: 'mock', enabled: true },
+  { id: 'mock-claude', label: 'Mock Claude', type: 'mock', enabled: true },
+  {
+    id: 'ollama-local',
+    label: 'Ollama (local)',
+    type: 'ollama',
+    enabled: false,
+    model: 'llama3',
+    baseUrl: 'http://127.0.0.1:11434',
+    options: { keepAlive: true, stream: false }
+  },
+  {
+    id: 'browser-bridge',
+    label: 'Browser Bridge',
+    type: 'browser-tab',
+    enabled: false,
+    options: {
+      url: 'http://localhost:3000',
+      script: DEFAULT_BROWSER_SCRIPT,
+      waitTimeoutMs: 15000
+    }
+  }
+];
+
+function mergeProviderDefaults(existing: ProviderConfigPayload[] | undefined): ProviderConfigPayload[] {
+  if (!existing || existing.length === 0) {
+    return [...DEFAULT_PROVIDERS];
+  }
+
+  const merged = new Map(existing.map((provider) => [provider.id, provider]));
+  for (const provider of DEFAULT_PROVIDERS) {
+    if (!merged.has(provider.id)) {
+      merged.set(provider.id, provider);
+    }
+  }
+  return Array.from(merged.values());
+}
 
 async function resolveConfigPath(): Promise<string> {
   const userData = app.getPath('userData');
@@ -16,17 +69,7 @@ export async function loadConfiguration(): Promise<PersistedConfig> {
   try {
     const raw = await fs.readFile(configPath, 'utf-8');
     const parsed = JSON.parse(raw) as PersistedConfig;
-    const providers = [...(parsed.providers ?? [])];
-    if (!providers.some((provider) => provider.id === 'openai-gpt-4o-mini')) {
-      providers.push({
-        id: 'openai-gpt-4o-mini',
-        label: 'OpenAI GPT-4o mini',
-        type: 'openai',
-        enabled: false,
-        model: 'gpt-4o-mini',
-        baseUrl: 'https://api.openai.com/v1'
-      });
-    }
+    const providers = mergeProviderDefaults(parsed.providers);
     return {
       providers,
       systemPrompts: parsed.systemPrompts ?? {},
@@ -43,28 +86,7 @@ export async function loadConfiguration(): Promise<PersistedConfig> {
       history: []
     };
     const defaultConfig: PersistedConfig = {
-      providers: [
-        {
-          id: 'mock-gpt',
-          label: 'Mock GPT',
-          type: 'mock',
-          enabled: true
-        },
-        {
-          id: 'mock-claude',
-          label: 'Mock Claude',
-          type: 'mock',
-          enabled: true
-        },
-        {
-          id: 'openai-gpt-4o-mini',
-          label: 'OpenAI GPT-4o mini',
-          type: 'openai',
-          enabled: false,
-          model: 'gpt-4o-mini',
-          baseUrl: 'https://api.openai.com/v1'
-        }
-      ],
+      providers: [...DEFAULT_PROVIDERS],
       systemPrompts: {},
       sessions: [defaultSession]
     };
