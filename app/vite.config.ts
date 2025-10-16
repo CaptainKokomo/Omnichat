@@ -4,8 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const rootDir = path.dirname(fileURLToPath(new URL('.', import.meta.url)));
+const isDev = process.env.NODE_ENV === 'development';
 
 export default defineConfig({
+  base: isDev ? '/' : './',
   plugins: [react()],
   build: {
     outDir: 'dist/renderer',
