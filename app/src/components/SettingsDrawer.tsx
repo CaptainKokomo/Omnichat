@@ -1,15 +1,24 @@
 import { useEffect, useState } from 'react';
 import type { ModelConfigPayload, ProviderConfigPayload } from '../types/chat';
+import type { OmnichatAPI } from '../platform/omnichatApi';
 
 interface SettingsDrawerProps {
   open: boolean;
   providers: ProviderConfigPayload[];
+  api: OmnichatAPI;
   onClose: () => void;
   onProvidersChange: (providers: ProviderConfigPayload[]) => void;
   onPersist: () => Promise<void>;
 }
 
-export function SettingsDrawer({ open, providers, onClose, onProvidersChange, onPersist }: SettingsDrawerProps): JSX.Element {
+export function SettingsDrawer({
+  open,
+  providers,
+  api,
+  onClose,
+  onProvidersChange,
+  onPersist
+}: SettingsDrawerProps): JSX.Element {
   const [localProviders, setLocalProviders] = useState<ProviderConfigPayload[]>(providers);
   const [saving, setSaving] = useState(false);
 
@@ -40,14 +49,17 @@ export function SettingsDrawer({ open, providers, onClose, onProvidersChange, on
 
   const handleSave = async () => {
     setSaving(true);
-    const payload: ModelConfigPayload = {
-      providers: localProviders
-    };
-    await window.omnichat.updateConfigs(payload);
-    await onPersist();
-    onProvidersChange(localProviders);
-    setSaving(false);
-    onClose();
+    try {
+      const payload: ModelConfigPayload = {
+        providers: localProviders
+      };
+      await api.updateConfigs(payload);
+      await onPersist();
+      onProvidersChange(localProviders);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
