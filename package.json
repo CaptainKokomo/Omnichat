@@ -1,0 +1,7 @@
+{
+  "name": "omnichat-monorepo",
+  "private": true,
+  "workspaces": [
+    "app"
+  ]
+}

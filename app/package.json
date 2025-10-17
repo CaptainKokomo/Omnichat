@@ -1,0 +1,17 @@
+{
+  "name": "omnichat",
+  "version": "0.1.0",
+  "description": "Omnichat desktop orchestration app for AI assistants.",
+  "main": "src/main/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-builder --win portable"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.6.0"
+  }
+}
