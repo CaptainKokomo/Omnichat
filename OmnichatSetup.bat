@@ -122,7 +122,9 @@ if (Test-Path $installRoot) {
 
 New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
 
+Write-Log 'Downloading Omnichat engine (this can take a minute)...'
 Download-File -uri $electronUrl -destination $zipPath
+Write-Log 'Unpacking files...'
 Extract-Zip -zipPath $zipPath -destination $extractPath
 
 $extractedRoot = Join-Path $extractPath "electron-v$electronVersion-win32-x64"
@@ -130,6 +132,7 @@ if (-not (Test-Path $extractedRoot)) {
     $extractedRoot = $extractPath
 }
 
+Write-Log 'Laying down application files...'
 Copy-Item -Path (Join-Path $extractedRoot '*') -Destination $installRoot -Recurse -Force
 
 $electronExe = Join-Path $installRoot 'electron.exe'
@@ -145,6 +148,8 @@ if (Test-Path $defaultAsar) {
 
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+
+Write-Log 'Preparing Omnichat application content...'
 
 New-Item -ItemType Directory -Path $appRoot -Force | Out-Null
 
@@ -1756,7 +1761,12 @@ button:disabled {
 
 '@
 
+$totalFiles = $files.Count
+$index = 0
+
 foreach ($item in $files.GetEnumerator()) {
+    $index++
+    Write-Log ("Copying Omnichat files ($index of $totalFiles)...")
     $relativePath = $item.Key
     $targetBase = $appRoot
 
@@ -1773,11 +1783,30 @@ foreach ($item in $files.GetEnumerator()) {
     Write-Utf8File -path $targetPath -content $item.Value
 }
 
+if (!(Test-Path $omnichatExe)) {
+    throw 'Installation incomplete: Omnichat.exe was not created.'
+}
+
+$verificationTargets = @(
+    Join-Path $appRoot 'package.json',
+    Join-Path $appRoot 'src\renderer\renderer.js',
+    Join-Path $resourcesRoot 'selectors.json',
+    Join-Path $resourcesRoot 'sites.json'
+)
+
+$missingFiles = $verificationTargets | Where-Object { -not (Test-Path $_) }
+if ($missingFiles.Count -gt 0) {
+    throw "Installation incomplete. Missing:`n$($missingFiles -join "`n")"
+}
+
+Write-Log 'Creating shortcuts and finishing setup...'
 Create-Shortcut -shortcutPath $desktopShortcut -targetPath $omnichatExe -workingDirectory $installRoot
+Create-Shortcut -shortcutPath (Join-Path ([Environment]::GetFolderPath('Programs')) 'Omnichat.lnk') -targetPath $omnichatExe -workingDirectory $installRoot
 
-Start-Process -FilePath $omnichatExe | Out-Null
+Start-Process -FilePath $omnichatExe -WorkingDirectory $installRoot | Out-Null
+Start-Process -FilePath explorer.exe -ArgumentList $installRoot | Out-Null
 
-Show-Message 'Omnichat is ready to use.'
+Show-Message "Omnichat is ready to use. A shortcut was added to your desktop and Start Menu. Files are in:`r`n$installRoot"
 }
 catch {
     $message = 'Omnichat setup failed: ' + $_.Exception.Message
