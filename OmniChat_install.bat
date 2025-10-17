@@ -66,7 +66,7 @@ if errorlevel 1 (
 )
 
 echo Extracting Node.js...
-tar.exe -xf "%NODE_ZIP%" -C "%RUNTIME_DIR%\node" --strip-components=1
+tar.exe -xf "%NODE_ZIP%" -C "%RUNTIME_DIR%\node"
 if errorlevel 1 (
   echo Failed to extract Node.js.
   exit /b 1
@@ -82,7 +82,7 @@ if errorlevel 1 (
 )
 
 echo Extracting Electron...
-tar.exe -xf "%ELECTRON_ZIP%" -C "%RUNTIME_DIR%\electron" --strip-components=1
+tar.exe -xf "%ELECTRON_ZIP%" -C "%RUNTIME_DIR%\electron"
 if errorlevel 1 (
   echo Failed to extract Electron.
   exit /b 1
@@ -141,20 +141,31 @@ if exist "!TARGET_DIR!\!TARGET_FILE!" (
   endlocal
   exit /b 0
 )
-for /d %%D in ("!TARGET_DIR!\*") do (
+set "FOUND_DIR="
+for /f "delims=" %%D in ('dir /ad /b /s "!TARGET_DIR!" 2^>nul') do (
   if exist "%%~fD\!TARGET_FILE!" (
-    echo Normalizing runtime layout in %%~nxD...
-    robocopy "%%~fD" "!TARGET_DIR!" /E /MOVE >nul
-    if errorlevel 8 (
-      echo Failed to normalize %%~fD.
-      endlocal
-      exit /b 1
-    )
-    if exist "%%~fD" rd /s /q "%%~fD"
-    goto :flatten_dir_check
+    set "FOUND_DIR=%%~fD"
+    goto :flatten_dir_found
   )
 )
-:flatten_dir_check
+:flatten_dir_found
+if not defined FOUND_DIR (
+  echo Required file !TARGET_FILE! not found under !TARGET_DIR!.
+  endlocal
+  exit /b 1
+)
+if /I "!FOUND_DIR!"=="!TARGET_DIR!" (
+  endlocal
+  exit /b 0
+)
+echo Normalizing runtime layout in !FOUND_DIR!...
+robocopy "!FOUND_DIR!" "!TARGET_DIR!" /E /MOVE >nul
+if errorlevel 8 (
+  echo Failed to normalize !FOUND_DIR!.
+  endlocal
+  exit /b 1
+)
+if exist "!FOUND_DIR!" rd /s /q "!FOUND_DIR!"
 if not exist "!TARGET_DIR!\!TARGET_FILE!" (
   echo Required file !TARGET_FILE! not found under !TARGET_DIR!.
   endlocal
