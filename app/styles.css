@@ -10,6 +10,10 @@ body {
   height: 100vh;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 #app {
   display: grid;
   grid-template-columns: 280px 1fr 340px;
@@ -101,6 +105,51 @@ body {
   display: flex;
   gap: 12px;
   align-items: center;
+}
+
+.target-chips {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.target-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-empty {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: #e2e8f0;
+  color: #0f172a;
+  border: 1px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+}
+
+.chip.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.chip:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 .round-table .controls {

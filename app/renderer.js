@@ -12,6 +12,7 @@ const elements = {
   roundPause: document.getElementById('roundPauseBtn'),
   roundResume: document.getElementById('roundResumeBtn'),
   roundStop: document.getElementById('roundStopBtn'),
+  targetChips: document.getElementById('targetChips'),
   quoteBtn: document.getElementById('quoteBtn'),
   snapshotBtn: document.getElementById('snapshotBtn'),
   attachBtn: document.getElementById('attachBtn'),
@@ -173,7 +174,6 @@ function renderAgents() {
         state.selected.delete(key);
       }
       renderAgents();
-      renderTargetDropdown();
     });
 
     top.appendChild(name);
@@ -251,7 +251,7 @@ function renderAgents() {
     item.appendChild(orderControls);
     elements.agentList.appendChild(item);
   });
-  renderTargetDropdown();
+  updateTargetControls();
 }
 
 function renderTargetDropdown() {
@@ -264,11 +264,68 @@ function renderTargetDropdown() {
     option.textContent = config.displayName || key;
     elements.singleTarget.appendChild(option);
   });
+  const firstSelected = Array.from(state.selected)[0];
+  if (firstSelected && state.selectors[firstSelected]) {
+    elements.singleTarget.value = firstSelected;
+  } else if (elements.singleTarget.options.length) {
+    elements.singleTarget.selectedIndex = 0;
+  }
+  elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
+}
+
+function renderTargetChips() {
+  if (!elements.targetChips) return;
+  elements.targetChips.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+  let hasAny = false;
+  state.order.forEach((key) => {
+    if (!state.selectors[key]) return;
+    hasAny = true;
+    const config = state.selectors[key];
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = config.displayName || key;
+    if (state.selected.has(key)) {
+      chip.classList.add('active');
+    }
+    chip.addEventListener('click', () => {
+      if (state.selected.has(key)) {
+        state.selected.delete(key);
+      } else {
+        state.selected.add(key);
+      }
+      renderAgents();
+    });
+    fragment.appendChild(chip);
+  });
+
+  if (!hasAny) {
+    const empty = document.createElement('span');
+    empty.className = 'chip-empty';
+    empty.textContent = 'No assistants available.';
+    fragment.appendChild(empty);
+  }
+
+  elements.targetChips.appendChild(fragment);
+}
+
+function updateTargetControls() {
+  renderTargetDropdown();
+  renderTargetChips();
 }
 
 function renderSiteEditor() {
   elements.siteEditor.innerHTML = '';
-  Object.entries(state.selectors).forEach(([key, config]) => {
+  const orderedKeys = state.order.length
+    ? [...state.order]
+    : Object.keys(state.selectors);
+  const extras = Object.keys(state.selectors).filter((key) => !orderedKeys.includes(key));
+  const keys = [...orderedKeys, ...extras];
+
+  keys.forEach((key) => {
+    const config = state.selectors[key];
+    if (!config) return;
     const row = document.createElement('div');
     row.className = 'site-row';
     row.dataset.key = key;
@@ -399,15 +456,44 @@ async function persistSettings() {
   elements.roundTurns.value = state.settings.roundTableTurns;
 }
 
-elements.openSettings.addEventListener('click', () => {
+function openSettingsModal() {
+  renderSiteEditor();
+  hydrateSettings();
   elements.settingsModal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+async function closeSettingsModal(save = true) {
+  if (save) {
+    await persistSelectors();
+    await persistSettings();
+    showToast('Settings saved.');
+  } else {
+    renderSiteEditor();
+    hydrateSettings();
+  }
+  elements.settingsModal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+elements.openSettings.addEventListener('click', () => {
+  openSettingsModal();
 });
 
 elements.closeSettings.addEventListener('click', async () => {
-  await persistSelectors();
-  await persistSettings();
-  elements.settingsModal.classList.add('hidden');
-  showToast('Settings saved.');
+  await closeSettingsModal(true);
+});
+
+elements.settingsModal.addEventListener('click', async (event) => {
+  if (event.target === elements.settingsModal) {
+    await closeSettingsModal(false);
+  }
+});
+
+document.addEventListener('keydown', async (event) => {
+  if (event.key === 'Escape' && !elements.settingsModal.classList.contains('hidden')) {
+    await closeSettingsModal(false);
+  }
 });
 
 elements.addSiteBtn.addEventListener('click', () => {
@@ -431,6 +517,7 @@ elements.addSiteBtn.addEventListener('click', () => {
     messageContainer: []
   };
   state.order.push(key);
+  state.selected.add(key);
   renderSiteEditor();
   renderAgents();
 });

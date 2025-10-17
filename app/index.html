@@ -23,6 +23,10 @@
           <select id="singleTarget"></select>
           <button id="singleSendBtn" class="secondary">Send to Selected</button>
         </div>
+        <div class="target-chips">
+          <span class="target-label">Choose assistants:</span>
+          <div id="targetChips" class="chip-list"></div>
+        </div>
         <div class="round-table">
           <div class="controls">
             <label>Turns
@@ -51,7 +55,7 @@
           <h2>Live Log</h2>
           <button id="exportLogBtn" class="secondary">Export</button>
         </div>
-        <button id="openSettings" class="secondary">Settings</button>
+        <button id="openSettings" class="secondary" type="button">Settings</button>
       </header>
       <div id="logView" class="log"></div>
     </aside>
@@ -71,7 +75,7 @@
     <div class="modal-body settings">
       <header>
         <h2>Settings</h2>
-        <button id="closeSettings" class="secondary">Close</button>
+        <button id="closeSettings" class="secondary" type="button">Save &amp; Close</button>
       </header>
       <section>
         <h3>Delays & Limits</h3>
