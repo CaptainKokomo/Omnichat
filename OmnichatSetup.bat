@@ -1423,11 +1423,18 @@ button:disabled {
 
 foreach ($item in $files.GetEnumerator()) {
     $relativePath = $item.Key
-    if ($relativePath.StartsWith('app/')) {
+    $targetBase = $appRoot
+
+    if ($relativePath.StartsWith('app/resources/')) {
+        $relativePath = $relativePath.Substring(14)
+        $targetBase = $resourcesRoot
+    }
+    elseif ($relativePath.StartsWith('app/')) {
         $relativePath = $relativePath.Substring(4)
     }
+
     $relativePath = $relativePath -replace '/', [IO.Path]::DirectorySeparatorChar
-    $targetPath = Join-Path $appRoot $relativePath
+    $targetPath = Join-Path $targetBase $relativePath
     Write-Utf8File -path $targetPath -content $item.Value
 }
 
