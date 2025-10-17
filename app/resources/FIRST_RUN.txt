@@ -1,7 +1,7 @@
 Welcome to Omnichat!
 
-1. Install Omnichat using the provided installer script.
-2. Open Omnichat from your desktop shortcut.
+1. Double-click OmnichatSetup to install everything automatically.
+2. Open Omnichat from your new desktop shortcut.
 3. Sign in to each assistant tab (ChatGPT, Claude, Copilot, Gemini).
 4. Use Broadcast to send a message to the selected assistants.
 5. Start a Round-table session to orchestrate K conversational turns.
