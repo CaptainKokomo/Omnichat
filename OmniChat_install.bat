@@ -12,16 +12,17 @@ set "ELECTRON_URL=https://github.com/electron/electron/releases/download/v28.2.0
 set "TEMP_DIR=%TEMP%\OmniChatInstaller"
 set "CONFIG_DIR=%INSTALL_ROOT%\config"
 set "LOG_DIR=%INSTALL_ROOT%\logs"
+set "ERROR_MSG="
 
 call :main
-exit /b
+goto :end
 
 :main
 cls
 echo Installing %APP_NAME%...
 if not defined LOCALAPPDATA (
-  echo LOCALAPPDATA is not set. Aborting.
-  exit /b 1
+  set "ERROR_MSG=LOCALAPPDATA is not set."
+  goto :fail
 )
 
 if exist "%TEMP_DIR%" rd /s /q "%TEMP_DIR%"
@@ -42,14 +43,14 @@ mkdir "%LOG_DIR%" >nul 2>nul
 
 where curl.exe >nul 2>nul
 if errorlevel 1 (
-  echo curl.exe not found. Please update Windows 10 or later.
-  exit /b 1
+  set "ERROR_MSG=curl.exe not found. Update Windows or install the App Installer package."
+  goto :fail
 )
 
 where tar.exe >nul 2>nul
 if errorlevel 1 (
-  echo tar.exe not found. Ensure Windows 10 build 17063 or newer.
-  exit /b 1
+  set "ERROR_MSG=tar.exe not found. Requires Windows 10 build 17063 or newer."
+  goto :fail
 )
 
 set "NODE_ZIP=%TEMP_DIR%\node.zip"
@@ -61,34 +62,34 @@ if exist "%ELECTRON_ZIP%" del "%ELECTRON_ZIP%"
 echo Downloading Node.js runtime...
 curl.exe -L -# -o "%NODE_ZIP%" "%NODE_URL%"
 if errorlevel 1 (
-  echo Failed to download Node.js.
-  exit /b 1
+  set "ERROR_MSG=Failed to download Node.js."
+  goto :fail
 )
 
 echo Extracting Node.js...
 tar.exe -xf "%NODE_ZIP%" -C "%RUNTIME_DIR%\node"
 if errorlevel 1 (
-  echo Failed to extract Node.js.
-  exit /b 1
+  set "ERROR_MSG=Failed to extract Node.js."
+  goto :fail
 )
 call :flatten_dir "%RUNTIME_DIR%\node" node.exe
-if errorlevel 1 exit /b 1
+if errorlevel 1 goto :fail
 
 echo Downloading Electron runtime...
 curl.exe -L -# -o "%ELECTRON_ZIP%" "%ELECTRON_URL%"
 if errorlevel 1 (
-  echo Failed to download Electron.
-  exit /b 1
+  set "ERROR_MSG=Failed to download Electron."
+  goto :fail
 )
 
 echo Extracting Electron...
 tar.exe -xf "%ELECTRON_ZIP%" -C "%RUNTIME_DIR%\electron"
 if errorlevel 1 (
-  echo Failed to extract Electron.
-  exit /b 1
+  set "ERROR_MSG=Failed to extract Electron."
+  goto :fail
 )
 call :flatten_dir "%RUNTIME_DIR%\electron" electron.exe
-if errorlevel 1 exit /b 1
+if errorlevel 1 goto :fail
 
 echo Writing application files...
 call :write_agentPreload_js "%APP_DIR%\agentPreload.js"
@@ -103,17 +104,29 @@ call :write_styles_css "%APP_DIR%\styles.css"
 call :write_selectors_json "%CONFIG_DIR%\selectors.json"
 call :write_FIRST_RUN_txt "%INSTALL_ROOT%\FIRST_RUN.txt"
 
+for %%F in (main.js preload.js renderer.js agentPreload.js index.html package.json styles.css) do (
+  if not exist "%APP_DIR%\%%F" (
+    set "ERROR_MSG=Required file %%F is missing."
+    goto :fail
+  )
+)
+
 call :create_shortcut "%USERPROFILE%\Desktop\OmniChat.lnk"
 
 echo Launching OmniChat...
-start "" "%RUNTIME_DIR%\electron\electron.exe" "%APP_DIR%"
+if exist "%RUNTIME_DIR%\electron\electron.exe" (
+  start "" "%RUNTIME_DIR%\electron\electron.exe" "%APP_DIR%"
+) else (
+  set "ERROR_MSG=Electron executable missing after install."
+  goto :fail
+)
 
 echo Cleaning up...
 if exist "%TEMP_DIR%" rd /s /q "%TEMP_DIR%"
 
 echo OmniChat is ready to use.
 echo INSTALLATION_COMPLETE
-exit /b 0
+goto :success
 
 
 :create_shortcut
@@ -132,47 +145,6 @@ set "VBS=%TEMP%\omnichat_shortcut.vbs"
 cscript //NoLogo "%VBS%"
 del "%VBS%" >nul 2>nul
 exit /b
-
-:flatten_dir
-setlocal EnableDelayedExpansion
-set "TARGET_DIR=%~1"
-set "TARGET_FILE=%~2"
-if exist "!TARGET_DIR!\!TARGET_FILE!" (
-  endlocal
-  exit /b 0
-)
-set "FOUND_DIR="
-for /f "delims=" %%D in ('dir /ad /b /s "!TARGET_DIR!" 2^>nul') do (
-  if exist "%%~fD\!TARGET_FILE!" (
-    set "FOUND_DIR=%%~fD"
-    goto :flatten_dir_found
-  )
-)
-:flatten_dir_found
-if not defined FOUND_DIR (
-  echo Required file !TARGET_FILE! not found under !TARGET_DIR!.
-  endlocal
-  exit /b 1
-)
-if /I "!FOUND_DIR!"=="!TARGET_DIR!" (
-  endlocal
-  exit /b 0
-)
-echo Normalizing runtime layout in !FOUND_DIR!...
-robocopy "!FOUND_DIR!" "!TARGET_DIR!" /E /MOVE >nul
-if errorlevel 8 (
-  echo Failed to normalize !FOUND_DIR!.
-  endlocal
-  exit /b 1
-)
-if exist "!FOUND_DIR!" rd /s /q "!FOUND_DIR!"
-if not exist "!TARGET_DIR!\!TARGET_FILE!" (
-  echo Required file !TARGET_FILE! not found under !TARGET_DIR!.
-  endlocal
-  exit /b 1
-)
-endlocal
-exit /b 0
 
 :write_agentPreload_js
 setlocal DisableDelayedExpansion
@@ -214,6 +186,10 @@ setlocal DisableDelayedExpansion
   echo           ^<select id="singleTarget"^>^</select^>
   echo           ^<button id="singleSendBtn" class="secondary"^>Send to Selected^</button^>
   echo         ^</div^>
+  echo         ^<div class="target-chips"^>
+  echo           ^<span class="target-label"^>Choose assistants:^</span^>
+  echo           ^<div id="targetChips" class="chip-list"^>^</div^>
+  echo         ^</div^>
   echo         ^<div class="round-table"^>
   echo           ^<div class="controls"^>
   echo             ^<label^>Turns
@@ -242,7 +218,7 @@ setlocal DisableDelayedExpansion
   echo           ^<h2^>Live Log^</h2^>
   echo           ^<button id="exportLogBtn" class="secondary"^>Export^</button^>
   echo         ^</div^>
-  echo         ^<button id="openSettings" class="secondary"^>Settings^</button^>
+  echo         ^<button id="openSettings" class="secondary" type="button"^>Settings^</button^>
   echo       ^</header^>
   echo       ^<div id="logView" class="log"^>^</div^>
   echo     ^</aside^>
@@ -262,7 +238,7 @@ setlocal DisableDelayedExpansion
   echo     ^<div class="modal-body settings"^>
   echo       ^<header^>
   echo         ^<h2^>Settings^</h2^>
-  echo         ^<button id="closeSettings" class="secondary"^>Close^</button^>
+  echo         ^<button id="closeSettings" class="secondary" type="button"^>Save ^&amp; Close^</button^>
   echo       ^</header^>
   echo       ^<section^>
   echo         ^<h3^>Delays ^& Limits^</h3^>
@@ -318,6 +294,8 @@ setlocal DisableDelayedExpansion
   echo const FIRST_RUN_PATH = path.join^(INSTALL_ROOT, 'FIRST_RUN.txt'^);
   echo.
   echo let mainWindow;
+  echo let selectors = {};
+  echo let settings = {};
   echo const agentWindows = new Map^(^);
   echo const agentState = new Map^(^);
   echo const logBuffer = [];
@@ -885,6 +863,7 @@ setlocal DisableDelayedExpansion
   echo   roundPause: document.getElementById^('roundPauseBtn'^),
   echo   roundResume: document.getElementById^('roundResumeBtn'^),
   echo   roundStop: document.getElementById^('roundStopBtn'^),
+  echo   targetChips: document.getElementById^('targetChips'^),
   echo   quoteBtn: document.getElementById^('quoteBtn'^),
   echo   snapshotBtn: document.getElementById^('snapshotBtn'^),
   echo   attachBtn: document.getElementById^('attachBtn'^),
@@ -1046,7 +1025,6 @@ setlocal DisableDelayedExpansion
   echo         state.selected.delete^(key^);
   echo       }
   echo       renderAgents^(^);
-  echo       renderTargetDropdown^(^);
   echo     }^);
   echo.
   echo     top.appendChild^(name^);
@@ -1124,7 +1102,7 @@ setlocal DisableDelayedExpansion
   echo     item.appendChild^(orderControls^);
   echo     elements.agentList.appendChild^(item^);
   echo   }^);
-  echo   renderTargetDropdown^(^);
+  echo   updateTargetControls^(^);
   echo }
   echo.
   echo function renderTargetDropdown^(^) {
@@ -1137,11 +1115,68 @@ setlocal DisableDelayedExpansion
   echo     option.textContent = config.displayName ^|^| key;
   echo     elements.singleTarget.appendChild^(option^);
   echo   }^);
+  echo   const firstSelected = Array.from^(state.selected^)[0];
+  echo   if ^(firstSelected ^&^& state.selectors[firstSelected]^) {
+  echo     elements.singleTarget.value = firstSelected;
+  echo   } else if ^(elements.singleTarget.options.length^) {
+  echo     elements.singleTarget.selectedIndex = 0;
+  echo   }
+  echo   elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
+  echo }
+  echo.
+  echo function renderTargetChips^(^) {
+  echo   if ^(!elements.targetChips^) return;
+  echo   elements.targetChips.innerHTML = '';
+  echo   const fragment = document.createDocumentFragment^(^);
+  echo   let hasAny = false;
+  echo   state.order.forEach^(^(key^) =^> {
+  echo     if ^(!state.selectors[key]^) return;
+  echo     hasAny = true;
+  echo     const config = state.selectors[key];
+  echo     const chip = document.createElement^('button'^);
+  echo     chip.type = 'button';
+  echo     chip.className = 'chip';
+  echo     chip.textContent = config.displayName ^|^| key;
+  echo     if ^(state.selected.has^(key^)^) {
+  echo       chip.classList.add^('active'^);
+  echo     }
+  echo     chip.addEventListener^('click', ^(^) =^> {
+  echo       if ^(state.selected.has^(key^)^) {
+  echo         state.selected.delete^(key^);
+  echo       } else {
+  echo         state.selected.add^(key^);
+  echo       }
+  echo       renderAgents^(^);
+  echo     }^);
+  echo     fragment.appendChild^(chip^);
+  echo   }^);
+  echo.
+  echo   if ^(!hasAny^) {
+  echo     const empty = document.createElement^('span'^);
+  echo     empty.className = 'chip-empty';
+  echo     empty.textContent = 'No assistants available.';
+  echo     fragment.appendChild^(empty^);
+  echo   }
+  echo.
+  echo   elements.targetChips.appendChild^(fragment^);
+  echo }
+  echo.
+  echo function updateTargetControls^(^) {
+  echo   renderTargetDropdown^(^);
+  echo   renderTargetChips^(^);
   echo }
   echo.
   echo function renderSiteEditor^(^) {
   echo   elements.siteEditor.innerHTML = '';
-  echo   Object.entries^(state.selectors^).forEach^(^([key, config]^) =^> {
+  echo   const orderedKeys = state.order.length
+  echo     ? [...state.order]
+  echo     : Object.keys^(state.selectors^);
+  echo   const extras = Object.keys^(state.selectors^).filter^(^(key^) =^> !orderedKeys.includes^(key^)^);
+  echo   const keys = [...orderedKeys, ...extras];
+  echo.
+  echo   keys.forEach^(^(key^) =^> {
+  echo     const config = state.selectors[key];
+  echo     if ^(!config^) return;
   echo     const row = document.createElement^('div'^);
   echo     row.className = 'site-row';
   echo     row.dataset.key = key;
@@ -1272,15 +1307,44 @@ setlocal DisableDelayedExpansion
   echo   elements.roundTurns.value = state.settings.roundTableTurns;
   echo }
   echo.
-  echo elements.openSettings.addEventListener^('click', ^(^) =^> {
+  echo function openSettingsModal^(^) {
+  echo   renderSiteEditor^(^);
+  echo   hydrateSettings^(^);
   echo   elements.settingsModal.classList.remove^('hidden'^);
+  echo   document.body.classList.add^('modal-open'^);
+  echo }
+  echo.
+  echo async function closeSettingsModal^(save = true^) {
+  echo   if ^(save^) {
+  echo     await persistSelectors^(^);
+  echo     await persistSettings^(^);
+  echo     showToast^('Settings saved.'^);
+  echo   } else {
+  echo     renderSiteEditor^(^);
+  echo     hydrateSettings^(^);
+  echo   }
+  echo   elements.settingsModal.classList.add^('hidden'^);
+  echo   document.body.classList.remove^('modal-open'^);
+  echo }
+  echo.
+  echo elements.openSettings.addEventListener^('click', ^(^) =^> {
+  echo   openSettingsModal^(^);
   echo }^);
   echo.
   echo elements.closeSettings.addEventListener^('click', async ^(^) =^> {
-  echo   await persistSelectors^(^);
-  echo   await persistSettings^(^);
-  echo   elements.settingsModal.classList.add^('hidden'^);
-  echo   showToast^('Settings saved.'^);
+  echo   await closeSettingsModal^(true^);
+  echo }^);
+  echo.
+  echo elements.settingsModal.addEventListener^('click', async ^(event^) =^> {
+  echo   if ^(event.target === elements.settingsModal^) {
+  echo     await closeSettingsModal^(false^);
+  echo   }
+  echo }^);
+  echo.
+  echo document.addEventListener^('keydown', async ^(event^) =^> {
+  echo   if ^(event.key === 'Escape' ^&^& !elements.settingsModal.classList.contains^('hidden'^)^) {
+  echo     await closeSettingsModal^(false^);
+  echo   }
   echo }^);
   echo.
   echo elements.addSiteBtn.addEventListener^('click', ^(^) =^> {
@@ -1304,6 +1368,7 @@ setlocal DisableDelayedExpansion
   echo     messageContainer: []
   echo   };
   echo   state.order.push^(key^);
+  echo   state.selected.add^(key^);
   echo   renderSiteEditor^(^);
   echo   renderAgents^(^);
   echo }^);
@@ -1676,6 +1741,10 @@ setlocal DisableDelayedExpansion
   echo   height: 100vh;
   echo }
   echo.
+  echo body.modal-open {
+  echo   overflow: hidden;
+  echo }
+  echo.
   echo #app {
   echo   display: grid;
   echo   grid-template-columns: 280px 1fr 340px;
@@ -1767,6 +1836,51 @@ setlocal DisableDelayedExpansion
   echo   display: flex;
   echo   gap: 12px;
   echo   align-items: center;
+  echo }
+  echo.
+  echo .target-chips {
+  echo   display: flex;
+  echo   align-items: center;
+  echo   gap: 12px;
+  echo   flex-wrap: wrap;
+  echo }
+  echo.
+  echo .target-label {
+  echo   font-size: 14px;
+  echo   font-weight: 600;
+  echo }
+  echo.
+  echo .chip-list {
+  echo   display: flex;
+  echo   flex-wrap: wrap;
+  echo   gap: 8px;
+  echo }
+  echo.
+  echo .chip-empty {
+  echo   font-size: 13px;
+  echo   color: #64748b;
+  echo }
+  echo.
+  echo .chip {
+  echo   border-radius: 999px;
+  echo   padding: 6px 14px;
+  echo   background: #e2e8f0;
+  echo   color: #0f172a;
+  echo   border: 1px solid transparent;
+  echo   font-size: 13px;
+  echo   cursor: pointer;
+  echo   transition: background 0.2s ease, color 0.2s ease, border 0.2s ease;
+  echo }
+  echo.
+  echo .chip.active {
+  echo   background: #2563eb;
+  echo   color: #ffffff;
+  echo   border-color: #1d4ed8;
+  echo }
+  echo.
+  echo .chip:focus {
+  echo   outline: 2px solid #3b82f6;
+  echo   outline-offset: 2px;
   echo }
   echo.
   echo .round-table .controls {
@@ -2106,3 +2220,48 @@ setlocal DisableDelayedExpansion
 )
 endlocal
 exit /b
+
+:flatten_dir
+setlocal EnableDelayedExpansion
+set "TARGET_DIR=%~1"
+set "TARGET_FILE=%~2"
+set "SOURCE_DIR="
+
+if exist "%TARGET_DIR%\%TARGET_FILE%" (
+  endlocal
+  exit /b 0
+)
+
+for /f "delims=" %%D in ('dir "%TARGET_DIR%" /ad /b') do (
+  if exist "%TARGET_DIR%\%%D\%TARGET_FILE%" (
+    set "SOURCE_DIR=%TARGET_DIR%\%%D"
+  )
+)
+
+if not defined SOURCE_DIR (
+  endlocal & set "ERROR_MSG=Could not find %TARGET_FILE% inside %TARGET_DIR%." & exit /b 1
+)
+
+for /f "delims=" %%F in ('dir "%SOURCE_DIR%" /b') do (
+  move /y "%SOURCE_DIR%\%%F" "%TARGET_DIR%" >nul
+)
+
+rd /s /q "%SOURCE_DIR%"
+endlocal
+exit /b 0
+
+:fail
+if not "%ERROR_MSG%"=="" echo ERROR: %ERROR_MSG%
+echo.
+echo Press any key to close this window.
+pause >nul
+exit /b 1
+
+:success
+echo.
+echo Press any key to close this window.
+pause >nul
+exit /b 0
+
+:end
+endlocal
