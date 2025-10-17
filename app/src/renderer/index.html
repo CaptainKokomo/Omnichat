@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Omnichat</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside class="sidebar">
+        <h1>Agents</h1>
+        <div id="agent-list" class="agent-list"></div>
+        <div class="sidebar-actions">
+          <button id="refresh-agents">Refresh</button>
+          <button id="open-settings">Settings</button>
+          <button id="open-first-run">First Run Guide</button>
+        </div>
+      </aside>
+      <main class="main">
+        <section class="composer">
+          <textarea id="composer-input" placeholder="Compose your broadcast..." rows="6"></textarea>
+          <div class="composer-actions">
+            <button id="broadcast-btn">Broadcast</button>
+            <button id="send-selected-btn" disabled>Send to Selected</button>
+            <button id="round-table-btn">Start Round-table</button>
+            <button id="pause-round-table-btn" disabled>Pause</button>
+            <button id="resume-round-table-btn" disabled>Resume</button>
+            <button id="stop-round-table-btn" disabled>Stop</button>
+          </div>
+          <div class="toolbox">
+            <button id="quote-selection-btn">Quote selection → composer</button>
+            <button id="snapshot-btn">Page snapshot → composer</button>
+            <button id="quick-snippet-btn">Quick attach snippet</button>
+            <button id="local-model-btn">Run local model</button>
+          </div>
+          <div class="tool-output" id="tool-output"></div>
+        </section>
+      </main>
+      <aside class="log-panel">
+        <h2>Live Log</h2>
+        <div id="log-entries" class="log-entries"></div>
+        <button id="export-log-btn">Export .txt</button>
+      </aside>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-content">
+        <header>
+          <h2>Settings</h2>
+          <button id="close-settings">×</button>
+        </header>
+        <section class="modal-body">
+          <form id="settings-form">
+            <label>
+              Manual confirm before send
+              <input type="checkbox" name="manualConfirm" />
+            </label>
+            <label>
+              Delay range (ms)
+              <div class="inline">
+                <input type="number" name="delayMin" min="0" />
+                <span>to</span>
+                <input type="number" name="delayMax" min="0" />
+              </div>
+            </label>
+            <label>
+              Throttle interval (ms)
+              <input type="number" name="throttleMs" min="0" />
+            </label>
+            <label>
+              Messages to read (N)
+              <input type="number" name="messagesToRead" min="1" />
+            </label>
+            <label>
+              Round-table turns (K)
+              <input type="number" name="roundTableTurns" min="1" />
+            </label>
+            <label>
+              Copilot host
+              <input type="text" name="copilotHost" />
+            </label>
+            <fieldset>
+              <legend>Local model</legend>
+              <label>
+                Enable
+                <input type="checkbox" name="localModelEnabled" />
+              </label>
+              <label>
+                Endpoint
+                <input type="text" name="localModelEndpoint" />
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>Selectors JSON</legend>
+              <textarea id="selectors-json" rows="10"></textarea>
+            </fieldset>
+            <div class="modal-actions">
+              <button type="submit">Save</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+
+    <script src="renderer.js" type="module"></script>
+  </body>
+</html>

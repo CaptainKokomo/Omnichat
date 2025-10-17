@@ -1,0 +1,63 @@
+{
+  "chatgpt": {
+    "input": [
+      "textarea",
+      "textarea[data-testid='chat-input']",
+      "div[contenteditable='true']"
+    ],
+    "sendButton": [
+      "button[data-testid='send-button']",
+      "button[aria-label='Send']"
+    ],
+    "messageContainer": [
+      "main",
+      "div[class*='conversation']"
+    ]
+  },
+  "claude": {
+    "input": [
+      "textarea",
+      "textarea[placeholder*='Message']",
+      "div[contenteditable='true']"
+    ],
+    "sendButton": [
+      "button[type='submit']",
+      "button[aria-label='Send']"
+    ],
+    "messageContainer": [
+      "main",
+      "div[class*='conversation']"
+    ]
+  },
+  "copilot": {
+    "input": [
+      "textarea#userInput",
+      "textarea",
+      "div[contenteditable='true']",
+      "textarea[placeholder*='Ask me']"
+    ],
+    "sendButton": [
+      "button[aria-label='Send']",
+      "button[data-testid='send-button']"
+    ],
+    "messageContainer": [
+      "main",
+      "div[class*='conversation']"
+    ]
+  },
+  "gemini": {
+    "input": [
+      "textarea",
+      "div[contenteditable='true']",
+      "textarea[aria-label*='Message']"
+    ],
+    "sendButton": [
+      "button[aria-label='Send']",
+      "button[type='submit']"
+    ],
+    "messageContainer": [
+      "main",
+      "div[class*='conversation']"
+    ]
+  }
+}
