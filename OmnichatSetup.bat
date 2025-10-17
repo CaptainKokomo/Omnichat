@@ -1422,7 +1422,11 @@ button:disabled {
 '@
 
 foreach ($item in $files.GetEnumerator()) {
-    $relativePath = $item.Key -replace '/', [IO.Path]::DirectorySeparatorChar
+    $relativePath = $item.Key
+    if ($relativePath.StartsWith('app/')) {
+        $relativePath = $relativePath.Substring(4)
+    }
+    $relativePath = $relativePath -replace '/', [IO.Path]::DirectorySeparatorChar
     $targetPath = Join-Path $appRoot $relativePath
     Write-Utf8File -path $targetPath -content $item.Value
 }
