@@ -136,7 +136,7 @@ set "VBS=%TEMP%\omnichat_shortcut.vbs"
   echo Set shell = CreateObject("WScript.Shell")
   echo Set shortcut = shell.CreateShortcut("%SHORTCUT_PATH%")
   echo shortcut.TargetPath = "%RUNTIME_DIR%\electron\electron.exe"
-  echo shortcut.Arguments = ""%APP_DIR%""
+  echo shortcut.Arguments = Chr^(34^) ^& "%APP_DIR%" ^& Chr^(34^)
   echo shortcut.Description = "%APP_NAME%"
   echo shortcut.WorkingDirectory = "%APP_DIR%"
   echo shortcut.IconLocation = "%RUNTIME_DIR%\electron\electron.exe,0"
@@ -847,883 +847,7 @@ endlocal
 exit /b
 
 :write_renderer_js
-setlocal DisableDelayedExpansion
-> "%~1" (
-  echo const api = window.omnichat;
-  echo.
-  echo const elements = {
-  echo   agentList: document.getElementById^('agentList'^),
-  echo   refreshAgents: document.getElementById^('refreshAgents'^),
-  echo   composerInput: document.getElementById^('composerInput'^),
-  echo   broadcastBtn: document.getElementById^('broadcastBtn'^),
-  echo   singleTarget: document.getElementById^('singleTarget'^),
-  echo   singleSendBtn: document.getElementById^('singleSendBtn'^),
-  echo   roundTurns: document.getElementById^('roundTurns'^),
-  echo   roundStart: document.getElementById^('roundStartBtn'^),
-  echo   roundPause: document.getElementById^('roundPauseBtn'^),
-  echo   roundResume: document.getElementById^('roundResumeBtn'^),
-  echo   roundStop: document.getElementById^('roundStopBtn'^),
-  echo   targetChips: document.getElementById^('targetChips'^),
-  echo   quoteBtn: document.getElementById^('quoteBtn'^),
-  echo   snapshotBtn: document.getElementById^('snapshotBtn'^),
-  echo   attachBtn: document.getElementById^('attachBtn'^),
-  echo   attachments: document.getElementById^('attachments'^),
-  echo   logView: document.getElementById^('logView'^),
-  echo   exportLogBtn: document.getElementById^('exportLogBtn'^),
-  echo   settingsModal: document.getElementById^('settingsModal'^),
-  echo   openSettings: document.getElementById^('openSettings'^),
-  echo   closeSettings: document.getElementById^('closeSettings'^),
-  echo   confirmModal: document.getElementById^('confirmModal'^),
-  echo   confirmMessage: document.getElementById^('confirmMessage'^),
-  echo   confirmCancel: document.getElementById^('confirmCancel'^),
-  echo   confirmOk: document.getElementById^('confirmOk'^),
-  echo   toast: document.getElementById^('toast'^),
-  echo   siteEditor: document.getElementById^('siteEditor'^),
-  echo   addSiteBtn: document.getElementById^('addSiteBtn'^),
-  echo   confirmToggle: document.getElementById^('confirmToggle'^),
-  echo   delayMin: document.getElementById^('delayMin'^),
-  echo   delayMax: document.getElementById^('delayMax'^),
-  echo   messageLimit: document.getElementById^('messageLimit'^),
-  echo   defaultTurns: document.getElementById^('defaultTurns'^),
-  echo   copilotHost: document.getElementById^('copilotHost'^)
-  echo };
-  echo.
-  echo const DEFAULT_KEYS = ['chatgpt', 'claude', 'copilot', 'gemini'];
-  echo.
-  echo const state = {
-  echo   selectors: {},
-  echo   settings: {},
-  echo   order: [],
-  echo   selected: new Set^(^),
-  echo   agents: {},
-  echo   log: [],
-  echo   attachments: [],
-  echo   confirmResolver: null,
-  echo   round: {
-  echo     active: false,
-  echo     paused: false,
-  echo     queue: [],
-  echo     turnsRemaining: 0,
-  echo     baseMessage: '',
-  echo     lastTranscript: '',
-  echo     timer: null
-  echo   }
-  echo };
-  echo.
-  echo function appendLog^(entry^) {
-  echo   state.log.push^(entry^);
-  echo   if ^(state.log.length ^> 2000^) {
-  echo     state.log = state.log.slice^(-2000^);
-  echo   }
-  echo   renderLog^(^);
-  echo }
-  echo.
-  echo function renderLog^(^) {
-  echo   elements.logView.innerHTML = '';
-  echo   state.log.slice^(-400^).forEach^(^(line^) =^> {
-  echo     const div = document.createElement^('div'^);
-  echo     div.className = 'log-entry';
-  echo     div.textContent = line;
-  echo     elements.logView.appendChild^(div^);
-  echo   }^);
-  echo   elements.logView.scrollTop = elements.logView.scrollHeight;
-  echo }
-  echo.
-  echo function showToast^(message, timeout = 4000^) {
-  echo   elements.toast.textContent = message;
-  echo   elements.toast.classList.remove^('hidden'^);
-  echo   clearTimeout^(elements.toast._timer^);
-  echo   elements.toast._timer = setTimeout^(^(^) =^> {
-  echo     elements.toast.classList.add^('hidden'^);
-  echo   }, timeout^);
-  echo }
-  echo.
-  echo function confirmSend^(message^) {
-  echo   if ^(!state.settings.confirmBeforeSend^) {
-  echo     return Promise.resolve^(true^);
-  echo   }
-  echo   elements.confirmMessage.textContent = message;
-  echo   elements.confirmModal.classList.remove^('hidden'^);
-  echo   return new Promise^(^(resolve^) =^> {
-  echo     state.confirmResolver = resolve;
-  echo   }^);
-  echo }
-  echo.
-  echo elements.confirmCancel.addEventListener^('click', ^(^) =^> {
-  echo   if ^(state.confirmResolver^) {
-  echo     state.confirmResolver^(false^);
-  echo     state.confirmResolver = null;
-  echo   }
-  echo   elements.confirmModal.classList.add^('hidden'^);
-  echo }^);
-  echo.
-  echo elements.confirmOk.addEventListener^('click', ^(^) =^> {
-  echo   if ^(state.confirmResolver^) {
-  echo     state.confirmResolver^(true^);
-  echo     state.confirmResolver = null;
-  echo   }
-  echo   elements.confirmModal.classList.add^('hidden'^);
-  echo }^);
-  echo.
-  echo function buildAgentOrderControls^(key^) {
-  echo   const container = document.createElement^('div'^);
-  echo   container.className = 'agent-order';
-  echo   const up = document.createElement^('button'^);
-  echo   up.textContent = '▲';
-  echo   up.addEventListener^('click', ^(^) =^> {
-  echo     const idx = state.order.indexOf^(key^);
-  echo     if ^(idx ^> 0^) {
-  echo       const swap = state.order[idx - 1];
-  echo       state.order[idx - 1] = key;
-  echo       state.order[idx] = swap;
-  echo       renderAgents^(^);
-  echo     }
-  echo   }^);
-  echo   const down = document.createElement^('button'^);
-  echo   down.textContent = '▼';
-  echo   down.addEventListener^('click', ^(^) =^> {
-  echo     const idx = state.order.indexOf^(key^);
-  echo     if ^(idx ^>= 0 ^&^& idx ^< state.order.length - 1^) {
-  echo       const swap = state.order[idx + 1];
-  echo       state.order[idx + 1] = key;
-  echo       state.order[idx] = swap;
-  echo       renderAgents^(^);
-  echo     }
-  echo   }^);
-  echo   const badge = document.createElement^('span'^);
-  echo   badge.className = 'round-badge';
-  echo   badge.textContent = `#${state.order.indexOf^(key^) + 1}`;
-  echo   container.appendChild^(up^);
-  echo   container.appendChild^(down^);
-  echo   container.appendChild^(badge^);
-  echo   return container;
-  echo }
-  echo.
-  echo function renderAgents^(^) {
-  echo   elements.agentList.innerHTML = '';
-  echo   state.order.forEach^(^(key^) =^> {
-  echo     const config = state.selectors[key];
-  echo     if ^(!config^) return;
-  echo     const item = document.createElement^('div'^);
-  echo     item.className = 'agent-item';
-  echo     if ^(state.selected.has^(key^)^) {
-  echo       item.classList.add^('active'^);
-  echo     }
-  echo.
-  echo     const top = document.createElement^('div'^);
-  echo     top.className = 'agent-top';
-  echo     const name = document.createElement^('div'^);
-  echo     name.innerHTML = `^<strong^>${config.displayName ^|^| key}^</strong^> ^<span class="badge"^>${key}^</span^>`;
-  echo.
-  echo     const toggle = document.createElement^('input'^);
-  echo     toggle.type = 'checkbox';
-  echo     toggle.checked = state.selected.has^(key^);
-  echo     toggle.addEventListener^('change', ^(^) =^> {
-  echo       if ^(toggle.checked^) {
-  echo         state.selected.add^(key^);
-  echo       } else {
-  echo         state.selected.delete^(key^);
-  echo       }
-  echo       renderAgents^(^);
-  echo     }^);
-  echo.
-  echo     top.appendChild^(name^);
-  echo     top.appendChild^(toggle^);
-  echo.
-  echo     const status = document.createElement^('div'^);
-  echo     status.className = 'agent-status';
-  echo     const data = state.agents[key];
-  echo     const statusBits = [];
-  echo     if ^(data ^&^& data.status^) statusBits.push^(data.status^);
-  echo     if ^(data ^&^& data.visible^) statusBits.push^('visible'^);
-  echo     if ^(data ^&^& data.url^) statusBits.push^(new URL^(data.url^).hostname^);
-  echo     status.textContent = statusBits.join^(' · '^) ^|^| 'offline';
-  echo.
-  echo     const actions = document.createElement^('div'^);
-  echo     actions.className = 'agent-actions';
-  echo.
-  echo     const connectBtn = document.createElement^('button'^);
-  echo     connectBtn.className = 'secondary';
-  echo     connectBtn.textContent = 'Connect';
-  echo     connectBtn.addEventListener^('click', async ^(^) =^> {
-  echo       await api.connectAgent^(key^);
-  echo     }^);
-  echo.
-  echo     const hideBtn = document.createElement^('button'^);
-  echo     hideBtn.className = 'secondary';
-  echo     hideBtn.textContent = 'Hide';
-  echo     hideBtn.addEventListener^('click', async ^(^) =^> {
-  echo       await api.hideAgent^(key^);
-  echo     }^);
-  echo.
-  echo     const readBtn = document.createElement^('button'^);
-  echo     readBtn.className = 'secondary';
-  echo     readBtn.textContent = 'Read';
-  echo     readBtn.addEventListener^('click', async ^(^) =^> {
-  echo       await ensureAgent^(key^);
-  echo       const messages = await api.readAgent^(key^);
-  echo       appendLog^(`${key}:\n${messages.join^('\n'^)}`^);
-  echo     }^);
-  echo.
-  echo     actions.appendChild^(connectBtn^);
-  echo     actions.appendChild^(hideBtn^);
-  echo     actions.appendChild^(readBtn^);
-  echo.
-  echo     const orderControls = buildAgentOrderControls^(key^);
-  echo.
-  echo     if ^(!DEFAULT_KEYS.includes^(key^)^) {
-  echo       const removeBtn = document.createElement^('button'^);
-  echo       removeBtn.className = 'secondary';
-  echo       removeBtn.textContent = 'Remove';
-  echo       removeBtn.addEventListener^('click', ^(^) =^> {
-  echo         delete state.selectors[key];
-  echo         state.order = state.order.filter^(^(k^) =^> k !== key^);
-  echo         state.selected.delete^(key^);
-  echo         persistSelectors^(^);
-  echo         renderAgents^(^);
-  echo         renderSiteEditor^(^);
-  echo       }^);
-  echo       actions.appendChild^(removeBtn^);
-  echo     } else {
-  echo       const resetBtn = document.createElement^('button'^);
-  echo       resetBtn.className = 'secondary';
-  echo       resetBtn.textContent = 'Reset';
-  echo       resetBtn.addEventListener^('click', async ^(^) =^> {
-  echo         await api.resetAgentSelectors^(key^);
-  echo         await reloadSelectors^(^);
-  echo         renderSiteEditor^(^);
-  echo       }^);
-  echo       actions.appendChild^(resetBtn^);
-  echo     }
-  echo.
-  echo     item.appendChild^(top^);
-  echo     item.appendChild^(status^);
-  echo     item.appendChild^(actions^);
-  echo     item.appendChild^(orderControls^);
-  echo     elements.agentList.appendChild^(item^);
-  echo   }^);
-  echo   updateTargetControls^(^);
-  echo }
-  echo.
-  echo function renderTargetDropdown^(^) {
-  echo   const selected = Array.from^(state.order^).filter^(^(key^) =^> state.selectors[key]^);
-  echo   elements.singleTarget.innerHTML = '';
-  echo   selected.forEach^(^(key^) =^> {
-  echo     const option = document.createElement^('option'^);
-  echo     const config = state.selectors[key];
-  echo     option.value = key;
-  echo     option.textContent = config.displayName ^|^| key;
-  echo     elements.singleTarget.appendChild^(option^);
-  echo   }^);
-  echo   const firstSelected = Array.from^(state.selected^)[0];
-  echo   if ^(firstSelected ^&^& state.selectors[firstSelected]^) {
-  echo     elements.singleTarget.value = firstSelected;
-  echo   } else if ^(elements.singleTarget.options.length^) {
-  echo     elements.singleTarget.selectedIndex = 0;
-  echo   }
-  echo   elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
-  echo }
-  echo.
-  echo function renderTargetChips^(^) {
-  echo   if ^(!elements.targetChips^) return;
-  echo   elements.targetChips.innerHTML = '';
-  echo   const fragment = document.createDocumentFragment^(^);
-  echo   let hasAny = false;
-  echo   state.order.forEach^(^(key^) =^> {
-  echo     if ^(!state.selectors[key]^) return;
-  echo     hasAny = true;
-  echo     const config = state.selectors[key];
-  echo     const chip = document.createElement^('button'^);
-  echo     chip.type = 'button';
-  echo     chip.className = 'chip';
-  echo     chip.textContent = config.displayName ^|^| key;
-  echo     if ^(state.selected.has^(key^)^) {
-  echo       chip.classList.add^('active'^);
-  echo     }
-  echo     chip.addEventListener^('click', ^(^) =^> {
-  echo       if ^(state.selected.has^(key^)^) {
-  echo         state.selected.delete^(key^);
-  echo       } else {
-  echo         state.selected.add^(key^);
-  echo       }
-  echo       renderAgents^(^);
-  echo     }^);
-  echo     fragment.appendChild^(chip^);
-  echo   }^);
-  echo.
-  echo   if ^(!hasAny^) {
-  echo     const empty = document.createElement^('span'^);
-  echo     empty.className = 'chip-empty';
-  echo     empty.textContent = 'No assistants available.';
-  echo     fragment.appendChild^(empty^);
-  echo   }
-  echo.
-  echo   elements.targetChips.appendChild^(fragment^);
-  echo }
-  echo.
-  echo function updateTargetControls^(^) {
-  echo   renderTargetDropdown^(^);
-  echo   renderTargetChips^(^);
-  echo }
-  echo.
-  echo function renderSiteEditor^(^) {
-  echo   elements.siteEditor.innerHTML = '';
-  echo   const orderedKeys = state.order.length
-  echo     ? [...state.order]
-  echo     : Object.keys^(state.selectors^);
-  echo   const extras = Object.keys^(state.selectors^).filter^(^(key^) =^> !orderedKeys.includes^(key^)^);
-  echo   const keys = [...orderedKeys, ...extras];
-  echo.
-  echo   keys.forEach^(^(key^) =^> {
-  echo     const config = state.selectors[key];
-  echo     if ^(!config^) return;
-  echo     const row = document.createElement^('div'^);
-  echo     row.className = 'site-row';
-  echo     row.dataset.key = key;
-  echo     row.innerHTML = `
-  echo       ^<div class="agent-top"^>
-  echo         ^<strong^>${config.displayName ^|^| key}^</strong^>
-  echo         ^<span class="badge"^>${key}^</span^>
-  echo       ^</div^>
-  echo       ^<label^>Display name
-  echo         ^<input type="text" class="field-name" value="${config.displayName ^|^| ''}" /^>
-  echo       ^</label^>
-  echo       ^<label^>Home URL
-  echo         ^<input type="text" class="field-home" value="${config.home ^|^| ''}" /^>
-  echo       ^</label^>
-  echo       ^<label^>URL patterns ^(one per line^)
-  echo         ^<textarea class="field-patterns"^>${^(config.patterns ^|^| []^).join^('\n'^)}^</textarea^>
-  echo       ^</label^>
-  echo       ^<label^>Input selectors
-  echo         ^<textarea class="field-input"^>${^(config.input ^|^| []^).join^('\n'^)}^</textarea^>
-  echo       ^</label^>
-  echo       ^<label^>Send button selectors
-  echo         ^<textarea class="field-send"^>${^(config.sendButton ^|^| []^).join^('\n'^)}^</textarea^>
-  echo       ^</label^>
-  echo       ^<label^>Message container selectors
-  echo         ^<textarea class="field-message"^>${^(config.messageContainer ^|^| []^).join^('\n'^)}^</textarea^>
-  echo       ^</label^>
-  echo     `;
-  echo.
-  echo     const actions = document.createElement^('div'^);
-  echo     actions.className = 'site-actions';
-  echo.
-  echo     const saveBtn = document.createElement^('button'^);
-  echo     saveBtn.className = 'secondary';
-  echo     saveBtn.textContent = 'Save';
-  echo     saveBtn.addEventListener^('click', ^(^) =^> {
-  echo       persistSelectors^(^);
-  echo       showToast^(`${key} selectors saved.`^);
-  echo     }^);
-  echo.
-  echo     actions.appendChild^(saveBtn^);
-  echo.
-  echo     if ^(!DEFAULT_KEYS.includes^(key^)^) {
-  echo       const deleteBtn = document.createElement^('button'^);
-  echo       deleteBtn.className = 'secondary';
-  echo       deleteBtn.textContent = 'Delete';
-  echo       deleteBtn.addEventListener^('click', ^(^) =^> {
-  echo         delete state.selectors[key];
-  echo         state.order = state.order.filter^(^(k^) =^> k !== key^);
-  echo         persistSelectors^(^);
-  echo         renderSiteEditor^(^);
-  echo         renderAgents^(^);
-  echo       }^);
-  echo       actions.appendChild^(deleteBtn^);
-  echo     }
-  echo.
-  echo     row.appendChild^(actions^);
-  echo     elements.siteEditor.appendChild^(row^);
-  echo   }^);
-  echo }
-  echo.
-  echo function collectSelectorsFromEditor^(^) {
-  echo   const rows = elements.siteEditor.querySelectorAll^('.site-row'^);
-  echo   const next = {};
-  echo   rows.forEach^(^(row^) =^> {
-  echo     const key = row.dataset.key.trim^(^);
-  echo     const displayName = row.querySelector^('.field-name'^).value.trim^(^) ^|^| key;
-  echo     const home = row.querySelector^('.field-home'^).value.trim^(^);
-  echo     const patterns = row
-  echo       .querySelector^('.field-patterns'^)
-  echo       .value.split^(/\r?\n/^)
-  echo       .map^(^(s^) =^> s.trim^(^)^)
-  echo       .filter^(Boolean^);
-  echo     const input = row
-  echo       .querySelector^('.field-input'^)
-  echo       .value.split^(/\r?\n/^)
-  echo       .map^(^(s^) =^> s.trim^(^)^)
-  echo       .filter^(Boolean^);
-  echo     const sendButton = row
-  echo       .querySelector^('.field-send'^)
-  echo       .value.split^(/\r?\n/^)
-  echo       .map^(^(s^) =^> s.trim^(^)^)
-  echo       .filter^(Boolean^);
-  echo     const messageContainer = row
-  echo       .querySelector^('.field-message'^)
-  echo       .value.split^(/\r?\n/^)
-  echo       .map^(^(s^) =^> s.trim^(^)^)
-  echo       .filter^(Boolean^);
-  echo     next[key] = {
-  echo       displayName,
-  echo       home,
-  echo       patterns: patterns.length ? patterns : home ? [home] : [],
-  echo       input,
-  echo       sendButton,
-  echo       messageContainer
-  echo     };
-  echo   }^);
-  echo   return next;
-  echo }
-  echo.
-  echo async function persistSelectors^(^) {
-  echo   const next = collectSelectorsFromEditor^(^);
-  echo   state.selectors = next;
-  echo   state.order = state.order.filter^(^(key^) =^> next[key]^);
-  echo   Object.keys^(next^).forEach^(^(key^) =^> {
-  echo     if ^(!state.order.includes^(key^)^) {
-  echo       state.order.push^(key^);
-  echo     }
-  echo   }^);
-  echo   await api.saveSelectors^(next^);
-  echo   renderAgents^(^);
-  echo }
-  echo.
-  echo function collectSettingsFromModal^(^) {
-  echo   return {
-  echo     confirmBeforeSend: elements.confirmToggle.checked,
-  echo     delayMin: Number^(elements.delayMin.value^) ^|^| 0,
-  echo     delayMax: Number^(elements.delayMax.value^) ^|^| 0,
-  echo     messageLimit: Number^(elements.messageLimit.value^) ^|^| 1,
-  echo     roundTableTurns: Number^(elements.defaultTurns.value^) ^|^| 1,
-  echo     copilotHost: elements.copilotHost.value.trim^(^)
-  echo   };
-  echo }
-  echo.
-  echo async function persistSettings^(^) {
-  echo   const next = collectSettingsFromModal^(^);
-  echo   state.settings = { ...state.settings, ...next };
-  echo   await api.saveSettings^(state.settings^);
-  echo   elements.roundTurns.value = state.settings.roundTableTurns;
-  echo }
-  echo.
-  echo function openSettingsModal^(^) {
-  echo   renderSiteEditor^(^);
-  echo   hydrateSettings^(^);
-  echo   elements.settingsModal.classList.remove^('hidden'^);
-  echo   document.body.classList.add^('modal-open'^);
-  echo }
-  echo.
-  echo async function closeSettingsModal^(save = true^) {
-  echo   if ^(save^) {
-  echo     await persistSelectors^(^);
-  echo     await persistSettings^(^);
-  echo     showToast^('Settings saved.'^);
-  echo   } else {
-  echo     renderSiteEditor^(^);
-  echo     hydrateSettings^(^);
-  echo   }
-  echo   elements.settingsModal.classList.add^('hidden'^);
-  echo   document.body.classList.remove^('modal-open'^);
-  echo }
-  echo.
-  echo elements.openSettings.addEventListener^('click', ^(^) =^> {
-  echo   openSettingsModal^(^);
-  echo }^);
-  echo.
-  echo elements.closeSettings.addEventListener^('click', async ^(^) =^> {
-  echo   await closeSettingsModal^(true^);
-  echo }^);
-  echo.
-  echo elements.settingsModal.addEventListener^('click', async ^(event^) =^> {
-  echo   if ^(event.target === elements.settingsModal^) {
-  echo     await closeSettingsModal^(false^);
-  echo   }
-  echo }^);
-  echo.
-  echo document.addEventListener^('keydown', async ^(event^) =^> {
-  echo   if ^(event.key === 'Escape' ^&^& !elements.settingsModal.classList.contains^('hidden'^)^) {
-  echo     await closeSettingsModal^(false^);
-  echo   }
-  echo }^);
-  echo.
-  echo elements.addSiteBtn.addEventListener^('click', ^(^) =^> {
-  echo   let key = prompt^('Enter a unique key ^(letters, numbers, hyphen^):'^);
-  echo   if ^(!key^) return;
-  echo   key = key.trim^(^).toLowerCase^(^);
-  echo   if ^(!/^^[a-z0-9\-]+$/.test^(key^)^) {
-  echo     showToast^('Key must contain only letters, numbers, or hyphen.'^);
-  echo     return;
-  echo   }
-  echo   if ^(state.selectors[key]^) {
-  echo     showToast^('Key already exists.'^);
-  echo     return;
-  echo   }
-  echo   state.selectors[key] = {
-  echo     displayName: key,
-  echo     home: '',
-  echo     patterns: [],
-  echo     input: [],
-  echo     sendButton: [],
-  echo     messageContainer: []
-  echo   };
-  echo   state.order.push^(key^);
-  echo   state.selected.add^(key^);
-  echo   renderSiteEditor^(^);
-  echo   renderAgents^(^);
-  echo }^);
-  echo.
-  echo async function ensureAgent^(key^) {
-  echo   try {
-  echo     const status = await api.ensureAgent^(key^);
-  echo     if ^(status^) {
-  echo       state.agents[key] = { ...state.agents[key], ...status };
-  echo       renderAgents^(^);
-  echo     }
-  echo   } catch ^(error^) {
-  echo     showToast^(`${key}: unable to reach agent window.`^);
-  echo   }
-  echo }
-  echo.
-  echo async function sendToAgents^(targets, message, modeLabel^) {
-  echo   if ^(!message^) {
-  echo     showToast^('Composer is empty.'^);
-  echo     return;
-  echo   }
-  echo   if ^(!targets.length^) {
-  echo     showToast^('Select at least one assistant.'^);
-  echo     return;
-  echo   }
-  echo   if ^(state.settings.confirmBeforeSend^) {
-  echo     const ok = await confirmSend^(`Confirm ${modeLabel} to ${targets.length} assistant^(s^)?`^);
-  echo     if ^(!ok^) {
-  echo       return;
-  echo     }
-  echo   }
-  echo   for ^(const key of targets^) {
-  echo     await ensureAgent^(key^);
-  echo     try {
-  echo       await api.sendAgent^({ key, text: buildMessageWithAttachments^(message^) }^);
-  echo       appendLog^(`${key}: message queued.`^);
-  echo     } catch ^(error^) {
-  echo       appendLog^(`${key}: send error ${error.message ^|^| error}`^);
-  echo       showToast^(`${key}: failed to send. Check selectors.`^);
-  echo     }
-  echo   }
-  echo }
-  echo.
-  echo function buildMessageWithAttachments^(base^) {
-  echo   if ^(!state.attachments.length^) return base;
-  echo   const parts = [base];
-  echo   state.attachments.forEach^(^(attachment, index^) =^> {
-  echo     parts.push^(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`^);
-  echo   }^);
-  echo   return parts.join^(''^);
-  echo }
-  echo.
-  echo elements.broadcastBtn.addEventListener^('click', async ^(^) =^> {
-  echo   const targets = Array.from^(state.selected^);
-  echo   const message = elements.composerInput.value.trim^(^);
-  echo   await sendToAgents^(targets, message, 'broadcast'^);
-  echo }^);
-  echo.
-  echo elements.singleSendBtn.addEventListener^('click', async ^(^) =^> {
-  echo   const key = elements.singleTarget.value;
-  echo   const message = elements.composerInput.value.trim^(^);
-  echo   if ^(!key^) {
-  echo     showToast^('Choose a target.'^);
-  echo     return;
-  echo   }
-  echo   await sendToAgents^([key], message, `send to ${key}`^);
-  echo }^);
-  echo.
-  echo function getPrimaryAgentKey^(^) {
-  echo   if ^(state.selected.size ^> 0^) {
-  echo     return Array.from^(state.selected^)[0];
-  echo   }
-  echo   const keys = Object.keys^(state.selectors^);
-  echo   return keys[0];
-  echo }
-  echo.
-  echo elements.quoteBtn.addEventListener^('click', async ^(^) =^> {
-  echo   const key = getPrimaryAgentKey^(^);
-  echo   if ^(!key^) {
-  echo     showToast^('No assistants available.'^);
-  echo     return;
-  echo   }
-  echo   await ensureAgent^(key^);
-  echo   const result = await api.captureSelection^(key^);
-  echo   if ^(!result ^|^| !result.ok ^|^| !result.selection^) {
-  echo     showToast^('No selection captured.'^);
-  echo     return;
-  echo   }
-  echo   pushAttachment^({
-  echo     title: `Quote from ${result.title ^|^| key}`,
-  echo     meta: result.url ^|^| '',
-  echo     body: result.selection
-  echo   }^);
-  echo }^);
-  echo.
-  echo elements.snapshotBtn.addEventListener^('click', async ^(^) =^> {
-  echo   const key = getPrimaryAgentKey^(^);
-  echo   if ^(!key^) {
-  echo     showToast^('No assistants available.'^);
-  echo     return;
-  echo   }
-  echo   await ensureAgent^(key^);
-  echo   const result = await api.snapshotPage^({ key, limit: 2000 }^);
-  echo   if ^(!result ^|^| !result.ok^) {
-  echo     showToast^('Snapshot failed.'^);
-  echo     return;
-  echo   }
-  echo   pushAttachment^({
-  echo     title: `Snapshot: ${result.title ^|^| key}`,
-  echo     meta: result.url ^|^| '',
-  echo     body: result.content ^|^| ''
-  echo   }^);
-  echo }^);
-  echo.
-  echo elements.attachBtn.addEventListener^('click', ^(^) =^> {
-  echo   const text = prompt^('Paste text to attach.'^);
-  echo   if ^(!text^) {
-  echo     return;
-  echo   }
-  echo   const chunks = text.match^(/.{1,1800}/gs^) ^|^| [];
-  echo   chunks.forEach^(^(chunk, index^) =^> {
-  echo     pushAttachment^({
-  echo       title: index === 0 ? 'Snippet' : `Snippet part ${index + 1}`,
-  echo       meta: `Length ${chunk.length} characters`,
-  echo       body: chunk
-  echo     }^);
-  echo   }^);
-  echo }^);
-  echo.
-  echo function pushAttachment^(attachment^) {
-  echo   state.attachments.push^(attachment^);
-  echo   renderAttachments^(^);
-  echo }
-  echo.
-  echo function renderAttachments^(^) {
-  echo   elements.attachments.innerHTML = '';
-  echo   if ^(!state.attachments.length^) {
-  echo     elements.attachments.textContent = 'No attachments yet.';
-  echo     return;
-  echo   }
-  echo   state.attachments.forEach^(^(attachment, index^) =^> {
-  echo     const div = document.createElement^('div'^);
-  echo     div.className = 'attachment';
-  echo     const title = document.createElement^('div'^);
-  echo     title.className = 'attachment-title';
-  echo     title.textContent = `${index + 1}. ${attachment.title}`;
-  echo     const meta = document.createElement^('div'^);
-  echo     meta.className = 'attachment-meta';
-  echo     meta.textContent = attachment.meta;
-  echo     const body = document.createElement^('div'^);
-  echo     body.textContent = attachment.body;
-  echo     const actions = document.createElement^('div'^);
-  echo     actions.className = 'site-actions';
-  echo     const insertBtn = document.createElement^('button'^);
-  echo     insertBtn.className = 'secondary';
-  echo     insertBtn.textContent = 'Insert into composer';
-  echo     insertBtn.addEventListener^('click', ^(^) =^> {
-  echo       elements.composerInput.value = `${elements.composerInput.value}\n\n${attachment.body}`.trim^(^);
-  echo     }^);
-  echo     const removeBtn = document.createElement^('button'^);
-  echo     removeBtn.className = 'secondary';
-  echo     removeBtn.textContent = 'Remove';
-  echo     removeBtn.addEventListener^('click', ^(^) =^> {
-  echo       state.attachments.splice^(index, 1^);
-  echo       renderAttachments^(^);
-  echo     }^);
-  echo     actions.appendChild^(insertBtn^);
-  echo     actions.appendChild^(removeBtn^);
-  echo     div.appendChild^(title^);
-  echo     div.appendChild^(meta^);
-  echo     div.appendChild^(body^);
-  echo     div.appendChild^(actions^);
-  echo     elements.attachments.appendChild^(div^);
-  echo   }^);
-  echo }
-  echo.
-  echo async function startRoundTable^(^) {
-  echo   const targets = Array.from^(state.selected^);
-  echo   if ^(!targets.length^) {
-  echo     showToast^('Select assistants for the round-table.'^);
-  echo     return;
-  echo   }
-  echo   const message = elements.composerInput.value.trim^(^);
-  echo   if ^(!message^) {
-  echo     showToast^('Composer is empty.'^);
-  echo     return;
-  echo   }
-  echo   const turns = Number^(elements.roundTurns.value^) ^|^| state.settings.roundTableTurns ^|^| 1;
-  echo   if ^(state.settings.confirmBeforeSend^) {
-  echo     const ok = await confirmSend^(`Start round-table with ${targets.length} assistants for ${turns} turns?`^);
-  echo     if ^(!ok^) return;
-  echo   }
-  echo   state.round.active = true;
-  echo   state.round.paused = false;
-  echo   state.round.baseMessage = message;
-  echo   state.round.turnsRemaining = turns;
-  echo   state.round.queue = buildRoundQueue^(targets^);
-  echo   state.round.lastTranscript = '';
-  echo   appendLog^(`Round-table started ^(${turns} turns^).`^);
-  echo   processRoundStep^(^);
-  echo }
-  echo.
-  echo elements.roundStart.addEventListener^('click', startRoundTable^);
-  echo.
-  echo elements.roundPause.addEventListener^('click', ^(^) =^> {
-  echo   if ^(!state.round.active^) return;
-  echo   state.round.paused = true;
-  echo   appendLog^('Round-table paused.'^);
-  echo }^);
-  echo.
-  echo elements.roundResume.addEventListener^('click', ^(^) =^> {
-  echo   if ^(!state.round.active^) return;
-  echo   state.round.paused = false;
-  echo   appendLog^('Round-table resumed.'^);
-  echo   processRoundStep^(^);
-  echo }^);
-  echo.
-  echo elements.roundStop.addEventListener^('click', stopRoundTable^);
-  echo.
-  echo elements.exportLogBtn.addEventListener^('click', async ^(^) =^> {
-  echo   const payload = state.log.join^('\n'^);
-  echo   const result = await api.exportLog^(payload^);
-  echo   if ^(result ^&^& result.ok^) {
-  echo     showToast^(`Log exported to ${result.path}`^);
-  echo   }
-  echo }^);
-  echo.
-  echo elements.refreshAgents.addEventListener^('click', async ^(^) =^> {
-  echo   for ^(const key of Object.keys^(state.selectors^)^) {
-  echo     await ensureAgent^(key^);
-  echo   }
-  echo   showToast^('Agent status refreshed.'^);
-  echo }^);
-  echo.
-  echo function stopRoundTable^(^) {
-  echo   if ^(!state.round.active^) return;
-  echo   state.round.active = false;
-  echo   state.round.paused = false;
-  echo   state.round.queue = [];
-  echo   state.round.turnsRemaining = 0;
-  echo   if ^(state.round.timer^) {
-  echo     clearTimeout^(state.round.timer^);
-  echo     state.round.timer = null;
-  echo   }
-  echo   appendLog^('Round-table stopped.'^);
-  echo }
-  echo.
-  echo function buildRoundQueue^(targets^) {
-  echo   const ordered = state.order.filter^(^(key^) =^> targets.includes^(key^)^);
-  echo   return [...ordered];
-  echo }
-  echo.
-  echo async function processRoundStep^(^) {
-  echo   if ^(!state.round.active^) {
-  echo     return;
-  echo   }
-  echo   if ^(state.round.paused^) {
-  echo     state.round.timer = setTimeout^(processRoundStep, 500^);
-  echo     return;
-  echo   }
-  echo   if ^(state.round.queue.length === 0^) {
-  echo     state.round.turnsRemaining -= 1;
-  echo     if ^(state.round.turnsRemaining ^<= 0^) {
-  echo       appendLog^('Round-table completed.'^);
-  echo       stopRoundTable^(^);
-  echo       return;
-  echo     }
-  echo     state.round.queue = buildRoundQueue^(Array.from^(state.selected^)^);
-  echo   }
-  echo   const key = state.round.queue.shift^(^);
-  echo   const message = buildRoundMessage^(key^);
-  echo   try {
-  echo     await ensureAgent^(key^);
-  echo     await api.sendAgent^({ key, text: message }^);
-  echo     appendLog^(`Round-table: sent turn to ${key}.`^);
-  echo     const messages = await api.readAgent^(key^);
-  echo     state.round.lastTranscript = messages.join^('\n'^);
-  echo   } catch ^(error^) {
-  echo     appendLog^(`Round-table: ${key} failed ^(${error.message ^|^| error}^).`^);
-  echo     showToast^(`${key} send failed during round-table.`^);
-  echo   }
-  echo   state.round.timer = setTimeout^(processRoundStep, 400^);
-  echo }
-  echo.
-  echo function buildRoundMessage^(key^) {
-  echo   const history = state.round.lastTranscript
-  echo     ? `\n\nLatest transcript:\n${state.round.lastTranscript}`
-  echo     : '';
-  echo   return `${state.round.baseMessage}${history}`;
-  echo }
-  echo.
-  echo async function reloadSelectors^(^) {
-  echo   const payload = await api.bootstrap^(^);
-  echo   state.selectors = payload.selectors;
-  echo   state.settings = payload.settings;
-  echo   state.log = payload.log ^|^| [];
-  echo   if ^(!state.order.length^) {
-  echo     state.order = Object.keys^(state.selectors^);
-  echo   }
-  echo   renderLog^(^);
-  echo   renderAgents^(^);
-  echo   renderSiteEditor^(^);
-  echo   hydrateSettings^(^);
-  echo }
-  echo.
-  echo function hydrateSettings^(^) {
-  echo   elements.confirmToggle.checked = !!state.settings.confirmBeforeSend;
-  echo   elements.delayMin.value = state.settings.delayMin ^|^| 0;
-  echo   elements.delayMax.value = state.settings.delayMax ^|^| 0;
-  echo   elements.messageLimit.value = state.settings.messageLimit ^|^| 5;
-  echo   elements.defaultTurns.value = state.settings.roundTableTurns ^|^| 2;
-  echo   elements.copilotHost.value = state.settings.copilotHost ^|^| '';
-  echo   elements.roundTurns.value = state.settings.roundTableTurns ^|^| 2;
-  echo }
-  echo.
-  echo async function bootstrap^(^) {
-  echo   const payload = await api.bootstrap^(^);
-  echo   state.selectors = payload.selectors ^|^| {};
-  echo   state.settings = payload.settings ^|^| {};
-  echo   state.log = payload.log ^|^| [];
-  echo   state.order = Object.keys^(state.selectors^);
-  echo   state.order.forEach^(^(key^) =^> state.selected.add^(key^)^);
-  echo   renderLog^(^);
-  echo   renderAgents^(^);
-  echo   renderSiteEditor^(^);
-  echo   hydrateSettings^(^);
-  echo }
-  echo.
-  echo api.onStatus^(^(status^) =^> {
-  echo   state.agents[status.key] = { ...state.agents[status.key], ...status };
-  echo   renderAgents^(^);
-  echo }^);
-  echo.
-  echo api.onStatusInit^(^(entries^) =^> {
-  echo   entries.forEach^(^(entry^) =^> {
-  echo     state.agents[entry.key] = { ...state.agents[entry.key], ...entry };
-  echo   }^);
-  echo   renderAgents^(^);
-  echo }^);
-  echo.
-  echo api.onLog^(^(entry^) =^> {
-  echo   appendLog^(entry^);
-  echo }^);
-  echo.
-  echo api.onToast^(^(message^) =^> {
-  echo   showToast^(message^);
-  echo }^);
-  echo.
-  echo window.addEventListener^('beforeunload', ^(^) =^> {
-  echo   stopRoundTable^(^);
-  echo }^);
-  echo.
-  echo bootstrap^(^);
-)
-endlocal
+call :write_block "%~1" renderer_js
 exit /b
 
 :write_styles_css
@@ -2221,6 +1345,38 @@ setlocal DisableDelayedExpansion
 endlocal
 exit /b
 
+:write_block
+setlocal DisableDelayedExpansion
+set "TARGET=%~1"
+set "MARKER=%~2"
+> "%TARGET%" (
+  for /f "delims=" %%L in ('call :emit_block %MARKER%') do (
+    echo(%%L
+  )
+)
+endlocal
+exit /b
+
+:emit_block
+setlocal DisableDelayedExpansion
+set "MARKER=%~1"
+set "BEGIN=%MARKER%_BEGIN"
+set "END=%MARKER%_END"
+set "COPY="
+for /f "usebackq tokens=1* delims=:" %%A in (`findstr /n "^" "%~f0"`) do (
+  if "%%B"=="%BEGIN%" (
+    set "COPY=1"
+  ) else if "%%B"=="%END%" (
+    set "COPY="
+    goto :emit_block_done
+  ) else if defined COPY (
+    echo %%B
+  )
+)
+:emit_block_done
+endlocal
+exit /b
+
 :flatten_dir
 setlocal EnableDelayedExpansion
 set "TARGET_DIR=%~1"
@@ -2265,3 +1421,880 @@ exit /b 0
 
 :end
 endlocal
+goto :EOF
+
+:renderer_js_BEGIN
+const api = window.omnichat;
+
+const elements = {
+  agentList: document.getElementById('agentList'),
+  refreshAgents: document.getElementById('refreshAgents'),
+  composerInput: document.getElementById('composerInput'),
+  broadcastBtn: document.getElementById('broadcastBtn'),
+  singleTarget: document.getElementById('singleTarget'),
+  singleSendBtn: document.getElementById('singleSendBtn'),
+  roundTurns: document.getElementById('roundTurns'),
+  roundStart: document.getElementById('roundStartBtn'),
+  roundPause: document.getElementById('roundPauseBtn'),
+  roundResume: document.getElementById('roundResumeBtn'),
+  roundStop: document.getElementById('roundStopBtn'),
+  targetChips: document.getElementById('targetChips'),
+  quoteBtn: document.getElementById('quoteBtn'),
+  snapshotBtn: document.getElementById('snapshotBtn'),
+  attachBtn: document.getElementById('attachBtn'),
+  attachments: document.getElementById('attachments'),
+  logView: document.getElementById('logView'),
+  exportLogBtn: document.getElementById('exportLogBtn'),
+  settingsModal: document.getElementById('settingsModal'),
+  openSettings: document.getElementById('openSettings'),
+  closeSettings: document.getElementById('closeSettings'),
+  confirmModal: document.getElementById('confirmModal'),
+  confirmMessage: document.getElementById('confirmMessage'),
+  confirmCancel: document.getElementById('confirmCancel'),
+  confirmOk: document.getElementById('confirmOk'),
+  toast: document.getElementById('toast'),
+  siteEditor: document.getElementById('siteEditor'),
+  addSiteBtn: document.getElementById('addSiteBtn'),
+  confirmToggle: document.getElementById('confirmToggle'),
+  delayMin: document.getElementById('delayMin'),
+  delayMax: document.getElementById('delayMax'),
+  messageLimit: document.getElementById('messageLimit'),
+  defaultTurns: document.getElementById('defaultTurns'),
+  copilotHost: document.getElementById('copilotHost')
+};
+
+const DEFAULT_KEYS = ['chatgpt', 'claude', 'copilot', 'gemini'];
+
+const state = {
+  selectors: {},
+  settings: {},
+  order: [],
+  selected: new Set(),
+  agents: {},
+  log: [],
+  attachments: [],
+  confirmResolver: null,
+  round: {
+    active: false,
+    paused: false,
+    queue: [],
+    turnsRemaining: 0,
+    baseMessage: '',
+    lastTranscript: '',
+    timer: null
+  }
+};
+
+function appendLog(entry) {
+  state.log.push(entry);
+  if (state.log.length > 2000) {
+    state.log = state.log.slice(-2000);
+  }
+  renderLog();
+}
+
+function renderLog() {
+  elements.logView.innerHTML = '';
+  state.log.slice(-400).forEach((line) => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = line;
+    elements.logView.appendChild(div);
+  });
+  elements.logView.scrollTop = elements.logView.scrollHeight;
+}
+
+function showToast(message, timeout = 4000) {
+  elements.toast.textContent = message;
+  elements.toast.classList.remove('hidden');
+  clearTimeout(elements.toast._timer);
+  elements.toast._timer = setTimeout(() => {
+    elements.toast.classList.add('hidden');
+  }, timeout);
+}
+
+function confirmSend(message) {
+  if (!state.settings.confirmBeforeSend) {
+    return Promise.resolve(true);
+  }
+  elements.confirmMessage.textContent = message;
+  elements.confirmModal.classList.remove('hidden');
+  return new Promise((resolve) => {
+    state.confirmResolver = resolve;
+  });
+}
+
+elements.confirmCancel.addEventListener('click', () => {
+  if (state.confirmResolver) {
+    state.confirmResolver(false);
+    state.confirmResolver = null;
+  }
+  elements.confirmModal.classList.add('hidden');
+});
+
+elements.confirmOk.addEventListener('click', () => {
+  if (state.confirmResolver) {
+    state.confirmResolver(true);
+    state.confirmResolver = null;
+  }
+  elements.confirmModal.classList.add('hidden');
+});
+
+function buildAgentOrderControls(key) {
+  const container = document.createElement('div');
+  container.className = 'agent-order';
+  const up = document.createElement('button');
+  up.textContent = '▲';
+  up.addEventListener('click', () => {
+    const idx = state.order.indexOf(key);
+    if (idx > 0) {
+      const swap = state.order[idx - 1];
+      state.order[idx - 1] = key;
+      state.order[idx] = swap;
+      renderAgents();
+    }
+  });
+  const down = document.createElement('button');
+  down.textContent = '▼';
+  down.addEventListener('click', () => {
+    const idx = state.order.indexOf(key);
+    if (idx >= 0 && idx < state.order.length - 1) {
+      const swap = state.order[idx + 1];
+      state.order[idx + 1] = key;
+      state.order[idx] = swap;
+      renderAgents();
+    }
+  });
+  const badge = document.createElement('span');
+  badge.className = 'round-badge';
+  badge.textContent = `#${state.order.indexOf(key) + 1}`;
+  container.appendChild(up);
+  container.appendChild(down);
+  container.appendChild(badge);
+  return container;
+}
+
+function renderAgents() {
+  elements.agentList.innerHTML = '';
+  state.order.forEach((key) => {
+    const config = state.selectors[key];
+    if (!config) return;
+    const item = document.createElement('div');
+    item.className = 'agent-item';
+    if (state.selected.has(key)) {
+      item.classList.add('active');
+    }
+
+    const top = document.createElement('div');
+    top.className = 'agent-top';
+    const name = document.createElement('div');
+    name.innerHTML = `<strong>${config.displayName || key}</strong> <span class="badge">${key}</span>`;
+
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.checked = state.selected.has(key);
+    toggle.addEventListener('change', () => {
+      if (toggle.checked) {
+        state.selected.add(key);
+      } else {
+        state.selected.delete(key);
+      }
+      renderAgents();
+    });
+
+    top.appendChild(name);
+    top.appendChild(toggle);
+
+    const status = document.createElement('div');
+    status.className = 'agent-status';
+    const data = state.agents[key];
+    const statusBits = [];
+    if (data && data.status) statusBits.push(data.status);
+    if (data && data.visible) statusBits.push('visible');
+    if (data && data.url) statusBits.push(new URL(data.url).hostname);
+    status.textContent = statusBits.join(' · ') || 'offline';
+
+    const actions = document.createElement('div');
+    actions.className = 'agent-actions';
+
+    const connectBtn = document.createElement('button');
+    connectBtn.className = 'secondary';
+    connectBtn.textContent = 'Connect';
+    connectBtn.addEventListener('click', async () => {
+      await api.connectAgent(key);
+    });
+
+    const hideBtn = document.createElement('button');
+    hideBtn.className = 'secondary';
+    hideBtn.textContent = 'Hide';
+    hideBtn.addEventListener('click', async () => {
+      await api.hideAgent(key);
+    });
+
+    const readBtn = document.createElement('button');
+    readBtn.className = 'secondary';
+    readBtn.textContent = 'Read';
+    readBtn.addEventListener('click', async () => {
+      await ensureAgent(key);
+      const messages = await api.readAgent(key);
+      appendLog(`${key}:\n${messages.join('\n')}`);
+    });
+
+    actions.appendChild(connectBtn);
+    actions.appendChild(hideBtn);
+    actions.appendChild(readBtn);
+
+    const orderControls = buildAgentOrderControls(key);
+
+    if (!DEFAULT_KEYS.includes(key)) {
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'secondary';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', () => {
+        delete state.selectors[key];
+        state.order = state.order.filter((k) => k !== key);
+        state.selected.delete(key);
+        persistSelectors();
+        renderAgents();
+        renderSiteEditor();
+      });
+      actions.appendChild(removeBtn);
+    } else {
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'secondary';
+      resetBtn.textContent = 'Reset';
+      resetBtn.addEventListener('click', async () => {
+        await api.resetAgentSelectors(key);
+        await reloadSelectors();
+        renderSiteEditor();
+      });
+      actions.appendChild(resetBtn);
+    }
+
+    item.appendChild(top);
+    item.appendChild(status);
+    item.appendChild(actions);
+    item.appendChild(orderControls);
+    elements.agentList.appendChild(item);
+  });
+  updateTargetControls();
+}
+
+function renderTargetDropdown() {
+  const selected = Array.from(state.order).filter((key) => state.selectors[key]);
+  elements.singleTarget.innerHTML = '';
+  selected.forEach((key) => {
+    const option = document.createElement('option');
+    const config = state.selectors[key];
+    option.value = key;
+    option.textContent = config.displayName || key;
+    elements.singleTarget.appendChild(option);
+  });
+  const firstSelected = Array.from(state.selected)[0];
+  if (firstSelected && state.selectors[firstSelected]) {
+    elements.singleTarget.value = firstSelected;
+  } else if (elements.singleTarget.options.length) {
+    elements.singleTarget.selectedIndex = 0;
+  }
+  elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
+}
+
+function renderTargetChips() {
+  if (!elements.targetChips) return;
+  elements.targetChips.innerHTML = '';
+  const fragment = document.createDocumentFragment();
+  let hasAny = false;
+  state.order.forEach((key) => {
+    if (!state.selectors[key]) return;
+    hasAny = true;
+    const config = state.selectors[key];
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = config.displayName || key;
+    if (state.selected.has(key)) {
+      chip.classList.add('active');
+    }
+    chip.addEventListener('click', () => {
+      if (state.selected.has(key)) {
+        state.selected.delete(key);
+      } else {
+        state.selected.add(key);
+      }
+      renderAgents();
+    });
+    fragment.appendChild(chip);
+  });
+
+  if (!hasAny) {
+    const empty = document.createElement('span');
+    empty.className = 'chip-empty';
+    empty.textContent = 'No assistants available.';
+    fragment.appendChild(empty);
+  }
+
+  elements.targetChips.appendChild(fragment);
+}
+
+function updateTargetControls() {
+  renderTargetDropdown();
+  renderTargetChips();
+}
+
+function renderSiteEditor() {
+  elements.siteEditor.innerHTML = '';
+  const orderedKeys = state.order.length
+    ? [...state.order]
+    : Object.keys(state.selectors);
+  const extras = Object.keys(state.selectors).filter((key) => !orderedKeys.includes(key));
+  const keys = [...orderedKeys, ...extras];
+
+  keys.forEach((key) => {
+    const config = state.selectors[key];
+    if (!config) return;
+    const row = document.createElement('div');
+    row.className = 'site-row';
+    row.dataset.key = key;
+    row.innerHTML = `
+      <div class="agent-top">
+        <strong>${config.displayName || key}</strong>
+        <span class="badge">${key}</span>
+      </div>
+      <label>Display name
+        <input type="text" class="field-name" value="${config.displayName || ''}" />
+      </label>
+      <label>Home URL
+        <input type="text" class="field-home" value="${config.home || ''}" />
+      </label>
+      <label>URL patterns (one per line)
+        <textarea class="field-patterns">${(config.patterns || []).join('\n')}</textarea>
+      </label>
+      <label>Input selectors
+        <textarea class="field-input">${(config.input || []).join('\n')}</textarea>
+      </label>
+      <label>Send button selectors
+        <textarea class="field-send">${(config.sendButton || []).join('\n')}</textarea>
+      </label>
+      <label>Message container selectors
+        <textarea class="field-message">${(config.messageContainer || []).join('\n')}</textarea>
+      </label>
+    `;
+
+    const actions = document.createElement('div');
+    actions.className = 'site-actions';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'secondary';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', () => {
+      persistSelectors();
+      showToast(`${key} selectors saved.`);
+    });
+
+    actions.appendChild(saveBtn);
+
+    if (!DEFAULT_KEYS.includes(key)) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'secondary';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.addEventListener('click', () => {
+        delete state.selectors[key];
+        state.order = state.order.filter((k) => k !== key);
+        persistSelectors();
+        renderSiteEditor();
+        renderAgents();
+      });
+      actions.appendChild(deleteBtn);
+    }
+
+    row.appendChild(actions);
+    elements.siteEditor.appendChild(row);
+  });
+}
+
+function collectSelectorsFromEditor() {
+  const rows = elements.siteEditor.querySelectorAll('.site-row');
+  const next = {};
+  rows.forEach((row) => {
+    const key = row.dataset.key.trim();
+    const displayName = row.querySelector('.field-name').value.trim() || key;
+    const home = row.querySelector('.field-home').value.trim();
+    const patterns = row
+      .querySelector('.field-patterns')
+      .value.split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const input = row
+      .querySelector('.field-input')
+      .value.split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const sendButton = row
+      .querySelector('.field-send')
+      .value.split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const messageContainer = row
+      .querySelector('.field-message')
+      .value.split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    next[key] = {
+      displayName,
+      home,
+      patterns: patterns.length ? patterns : home ? [home] : [],
+      input,
+      sendButton,
+      messageContainer
+    };
+  });
+  return next;
+}
+
+async function persistSelectors() {
+  const next = collectSelectorsFromEditor();
+  state.selectors = next;
+  state.order = state.order.filter((key) => next[key]);
+  Object.keys(next).forEach((key) => {
+    if (!state.order.includes(key)) {
+      state.order.push(key);
+    }
+  });
+  await api.saveSelectors(next);
+  renderAgents();
+}
+
+function collectSettingsFromModal() {
+  return {
+    confirmBeforeSend: elements.confirmToggle.checked,
+    delayMin: Number(elements.delayMin.value) || 0,
+    delayMax: Number(elements.delayMax.value) || 0,
+    messageLimit: Number(elements.messageLimit.value) || 1,
+    roundTableTurns: Number(elements.defaultTurns.value) || 1,
+    copilotHost: elements.copilotHost.value.trim()
+  };
+}
+
+async function persistSettings() {
+  const next = collectSettingsFromModal();
+  state.settings = { ...state.settings, ...next };
+  await api.saveSettings(state.settings);
+  elements.roundTurns.value = state.settings.roundTableTurns;
+}
+
+function openSettingsModal() {
+  renderSiteEditor();
+  hydrateSettings();
+  elements.settingsModal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+}
+
+async function closeSettingsModal(save = true) {
+  if (save) {
+    await persistSelectors();
+    await persistSettings();
+    showToast('Settings saved.');
+  } else {
+    renderSiteEditor();
+    hydrateSettings();
+  }
+  elements.settingsModal.classList.add('hidden');
+  document.body.classList.remove('modal-open');
+}
+
+elements.openSettings.addEventListener('click', () => {
+  openSettingsModal();
+});
+
+elements.closeSettings.addEventListener('click', async () => {
+  await closeSettingsModal(true);
+});
+
+elements.settingsModal.addEventListener('click', async (event) => {
+  if (event.target === elements.settingsModal) {
+    await closeSettingsModal(false);
+  }
+});
+
+document.addEventListener('keydown', async (event) => {
+  if (event.key === 'Escape' && !elements.settingsModal.classList.contains('hidden')) {
+    await closeSettingsModal(false);
+  }
+});
+
+elements.addSiteBtn.addEventListener('click', () => {
+  let key = prompt('Enter a unique key (letters, numbers, hyphen):');
+  if (!key) return;
+  key = key.trim().toLowerCase();
+  if (!/^[a-z0-9\-]+$/.test(key)) {
+    showToast('Key must contain only letters, numbers, or hyphen.');
+    return;
+  }
+  if (state.selectors[key]) {
+    showToast('Key already exists.');
+    return;
+  }
+  state.selectors[key] = {
+    displayName: key,
+    home: '',
+    patterns: [],
+    input: [],
+    sendButton: [],
+    messageContainer: []
+  };
+  state.order.push(key);
+  state.selected.add(key);
+  renderSiteEditor();
+  renderAgents();
+});
+
+async function ensureAgent(key) {
+  try {
+    const status = await api.ensureAgent(key);
+    if (status) {
+      state.agents[key] = { ...state.agents[key], ...status };
+      renderAgents();
+    }
+  } catch (error) {
+    showToast(`${key}: unable to reach agent window.`);
+  }
+}
+
+async function sendToAgents(targets, message, modeLabel) {
+  if (!message) {
+    showToast('Composer is empty.');
+    return;
+  }
+  if (!targets.length) {
+    showToast('Select at least one assistant.');
+    return;
+  }
+  if (state.settings.confirmBeforeSend) {
+    const ok = await confirmSend(`Confirm ${modeLabel} to ${targets.length} assistant(s)?`);
+    if (!ok) {
+      return;
+    }
+  }
+  for (const key of targets) {
+    await ensureAgent(key);
+    try {
+      await api.sendAgent({ key, text: buildMessageWithAttachments(message) });
+      appendLog(`${key}: message queued.`);
+    } catch (error) {
+      appendLog(`${key}: send error ${error.message || error}`);
+      showToast(`${key}: failed to send. Check selectors.`);
+    }
+  }
+}
+
+function buildMessageWithAttachments(base) {
+  if (!state.attachments.length) return base;
+  const parts = [base];
+  state.attachments.forEach((attachment, index) => {
+    parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`);
+  });
+  return parts.join('');
+}
+
+elements.broadcastBtn.addEventListener('click', async () => {
+  const targets = Array.from(state.selected);
+  const message = elements.composerInput.value.trim();
+  await sendToAgents(targets, message, 'broadcast');
+});
+
+elements.singleSendBtn.addEventListener('click', async () => {
+  const key = elements.singleTarget.value;
+  const message = elements.composerInput.value.trim();
+  if (!key) {
+    showToast('Choose a target.');
+    return;
+  }
+  await sendToAgents([key], message, `send to ${key}`);
+});
+
+function getPrimaryAgentKey() {
+  if (state.selected.size > 0) {
+    return Array.from(state.selected)[0];
+  }
+  const keys = Object.keys(state.selectors);
+  return keys[0];
+}
+
+elements.quoteBtn.addEventListener('click', async () => {
+  const key = getPrimaryAgentKey();
+  if (!key) {
+    showToast('No assistants available.');
+    return;
+  }
+  await ensureAgent(key);
+  const result = await api.captureSelection(key);
+  if (!result || !result.ok || !result.selection) {
+    showToast('No selection captured.');
+    return;
+  }
+  pushAttachment({
+    title: `Quote from ${result.title || key}`,
+    meta: result.url || '',
+    body: result.selection
+  });
+});
+
+elements.snapshotBtn.addEventListener('click', async () => {
+  const key = getPrimaryAgentKey();
+  if (!key) {
+    showToast('No assistants available.');
+    return;
+  }
+  await ensureAgent(key);
+  const result = await api.snapshotPage({ key, limit: 2000 });
+  if (!result || !result.ok) {
+    showToast('Snapshot failed.');
+    return;
+  }
+  pushAttachment({
+    title: `Snapshot: ${result.title || key}`,
+    meta: result.url || '',
+    body: result.content || ''
+  });
+});
+
+elements.attachBtn.addEventListener('click', () => {
+  const text = prompt('Paste text to attach.');
+  if (!text) {
+    return;
+  }
+  const chunks = text.match(/.{1,1800}/gs) || [];
+  chunks.forEach((chunk, index) => {
+    pushAttachment({
+      title: index === 0 ? 'Snippet' : `Snippet part ${index + 1}`,
+      meta: `Length ${chunk.length} characters`,
+      body: chunk
+    });
+  });
+});
+
+function pushAttachment(attachment) {
+  state.attachments.push(attachment);
+  renderAttachments();
+}
+
+function renderAttachments() {
+  elements.attachments.innerHTML = '';
+  if (!state.attachments.length) {
+    elements.attachments.textContent = 'No attachments yet.';
+    return;
+  }
+  state.attachments.forEach((attachment, index) => {
+    const div = document.createElement('div');
+    div.className = 'attachment';
+    const title = document.createElement('div');
+    title.className = 'attachment-title';
+    title.textContent = `${index + 1}. ${attachment.title}`;
+    const meta = document.createElement('div');
+    meta.className = 'attachment-meta';
+    meta.textContent = attachment.meta;
+    const body = document.createElement('div');
+    body.textContent = attachment.body;
+    const actions = document.createElement('div');
+    actions.className = 'site-actions';
+    const insertBtn = document.createElement('button');
+    insertBtn.className = 'secondary';
+    insertBtn.textContent = 'Insert into composer';
+    insertBtn.addEventListener('click', () => {
+      elements.composerInput.value = `${elements.composerInput.value}\n\n${attachment.body}`.trim();
+    });
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'secondary';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => {
+      state.attachments.splice(index, 1);
+      renderAttachments();
+    });
+    actions.appendChild(insertBtn);
+    actions.appendChild(removeBtn);
+    div.appendChild(title);
+    div.appendChild(meta);
+    div.appendChild(body);
+    div.appendChild(actions);
+    elements.attachments.appendChild(div);
+  });
+}
+
+async function startRoundTable() {
+  const targets = Array.from(state.selected);
+  if (!targets.length) {
+    showToast('Select assistants for the round-table.');
+    return;
+  }
+  const message = elements.composerInput.value.trim();
+  if (!message) {
+    showToast('Composer is empty.');
+    return;
+  }
+  const turns = Number(elements.roundTurns.value) || state.settings.roundTableTurns || 1;
+  if (state.settings.confirmBeforeSend) {
+    const ok = await confirmSend(`Start round-table with ${targets.length} assistants for ${turns} turns?`);
+    if (!ok) return;
+  }
+  state.round.active = true;
+  state.round.paused = false;
+  state.round.baseMessage = message;
+  state.round.turnsRemaining = turns;
+  state.round.queue = buildRoundQueue(targets);
+  state.round.lastTranscript = '';
+  appendLog(`Round-table started (${turns} turns).`);
+  processRoundStep();
+}
+
+elements.roundStart.addEventListener('click', startRoundTable);
+
+elements.roundPause.addEventListener('click', () => {
+  if (!state.round.active) return;
+  state.round.paused = true;
+  appendLog('Round-table paused.');
+});
+
+elements.roundResume.addEventListener('click', () => {
+  if (!state.round.active) return;
+  state.round.paused = false;
+  appendLog('Round-table resumed.');
+  processRoundStep();
+});
+
+elements.roundStop.addEventListener('click', stopRoundTable);
+
+elements.exportLogBtn.addEventListener('click', async () => {
+  const payload = state.log.join('\n');
+  const result = await api.exportLog(payload);
+  if (result && result.ok) {
+    showToast(`Log exported to ${result.path}`);
+  }
+});
+
+elements.refreshAgents.addEventListener('click', async () => {
+  for (const key of Object.keys(state.selectors)) {
+    await ensureAgent(key);
+  }
+  showToast('Agent status refreshed.');
+});
+
+function stopRoundTable() {
+  if (!state.round.active) return;
+  state.round.active = false;
+  state.round.paused = false;
+  state.round.queue = [];
+  state.round.turnsRemaining = 0;
+  if (state.round.timer) {
+    clearTimeout(state.round.timer);
+    state.round.timer = null;
+  }
+  appendLog('Round-table stopped.');
+}
+
+function buildRoundQueue(targets) {
+  const ordered = state.order.filter((key) => targets.includes(key));
+  return [...ordered];
+}
+
+async function processRoundStep() {
+  if (!state.round.active) {
+    return;
+  }
+  if (state.round.paused) {
+    state.round.timer = setTimeout(processRoundStep, 500);
+    return;
+  }
+  if (state.round.queue.length === 0) {
+    state.round.turnsRemaining -= 1;
+    if (state.round.turnsRemaining <= 0) {
+      appendLog('Round-table completed.');
+      stopRoundTable();
+      return;
+    }
+    state.round.queue = buildRoundQueue(Array.from(state.selected));
+  }
+  const key = state.round.queue.shift();
+  const message = buildRoundMessage(key);
+  try {
+    await ensureAgent(key);
+    await api.sendAgent({ key, text: message });
+    appendLog(`Round-table: sent turn to ${key}.`);
+    const messages = await api.readAgent(key);
+    state.round.lastTranscript = messages.join('\n');
+  } catch (error) {
+    appendLog(`Round-table: ${key} failed (${error.message || error}).`);
+    showToast(`${key} send failed during round-table.`);
+  }
+  state.round.timer = setTimeout(processRoundStep, 400);
+}
+
+function buildRoundMessage(key) {
+  const history = state.round.lastTranscript
+    ? `\n\nLatest transcript:\n${state.round.lastTranscript}`
+    : '';
+  return `${state.round.baseMessage}${history}`;
+}
+
+async function reloadSelectors() {
+  const payload = await api.bootstrap();
+  state.selectors = payload.selectors;
+  state.settings = payload.settings;
+  state.log = payload.log || [];
+  if (!state.order.length) {
+    state.order = Object.keys(state.selectors);
+  }
+  renderLog();
+  renderAgents();
+  renderSiteEditor();
+  hydrateSettings();
+}
+
+function hydrateSettings() {
+  elements.confirmToggle.checked = !!state.settings.confirmBeforeSend;
+  elements.delayMin.value = state.settings.delayMin || 0;
+  elements.delayMax.value = state.settings.delayMax || 0;
+  elements.messageLimit.value = state.settings.messageLimit || 5;
+  elements.defaultTurns.value = state.settings.roundTableTurns || 2;
+  elements.copilotHost.value = state.settings.copilotHost || '';
+  elements.roundTurns.value = state.settings.roundTableTurns || 2;
+}
+
+async function bootstrap() {
+  const payload = await api.bootstrap();
+  state.selectors = payload.selectors || {};
+  state.settings = payload.settings || {};
+  state.log = payload.log || [];
+  state.order = Object.keys(state.selectors);
+  state.order.forEach((key) => state.selected.add(key));
+  renderLog();
+  renderAgents();
+  renderSiteEditor();
+  hydrateSettings();
+}
+
+api.onStatus((status) => {
+  state.agents[status.key] = { ...state.agents[status.key], ...status };
+  renderAgents();
+});
+
+api.onStatusInit((entries) => {
+  entries.forEach((entry) => {
+    state.agents[entry.key] = { ...state.agents[entry.key], ...entry };
+  });
+  renderAgents();
+});
+
+api.onLog((entry) => {
+  appendLog(entry);
+});
+
+api.onToast((message) => {
+  showToast(message);
+});
+
+window.addEventListener('beforeunload', () => {
+  stopRoundTable();
+});
+
+bootstrap();
+:renderer_js_END

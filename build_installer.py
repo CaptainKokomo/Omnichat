@@ -5,6 +5,10 @@ import textwrap
 INSTALLER_NAME = 'OmniChat_install.bat'
 APP_ROOT = 'app'
 
+BLOCK_FILES = {
+    'renderer.js',
+}
+
 FILES = []
 for root, _, files in os.walk(APP_ROOT):
     for name in sorted(files):
@@ -38,8 +42,22 @@ def make_label_name(rel_path: str) -> str:
     return f'write_{label}'
 
 
+block_data = []
+
+
 def build_file_section(rel_path: str, lines):
     label = make_label_name(rel_path)
+    if rel_path in BLOCK_FILES:
+        marker = label[len('write_'):]
+        block_data.append((marker, lines))
+        section_lines = [
+            f':{label}',
+            f'call :write_block "%~1" {marker}',
+            'exit /b'
+        ]
+        section = '\n'.join(section_lines)
+        return label, section
+
     body_lines = [f'  {escape_line(line)}' for line in lines] or ['  echo.']
     section_lines = [
         f':{label}',
@@ -251,7 +269,7 @@ set "VBS=%TEMP%\\omnichat_shortcut.vbs"
   echo Set shell = CreateObject("WScript.Shell")
   echo Set shortcut = shell.CreateShortcut("%SHORTCUT_PATH%")
   echo shortcut.TargetPath = "%RUNTIME_DIR%\\electron\\electron.exe"
-  echo shortcut.Arguments = "\"%APP_DIR%\""
+  echo shortcut.Arguments = Chr^(34^) ^& "%APP_DIR%" ^& Chr^(34^)
   echo shortcut.Description = "%APP_NAME%"
   echo shortcut.WorkingDirectory = "%APP_DIR%"
   echo shortcut.IconLocation = "%RUNTIME_DIR%\\electron\\electron.exe,0"
@@ -263,6 +281,38 @@ exit /b
 ''').strip('\n')
 
 utilities = textwrap.dedent('''
+:write_block
+setlocal DisableDelayedExpansion
+set "TARGET=%~1"
+set "MARKER=%~2"
+> "%TARGET%" (
+  for /f "delims=" %%L in ('call :emit_block %MARKER%') do (
+    echo(%%L
+  )
+)
+endlocal
+exit /b
+
+:emit_block
+setlocal DisableDelayedExpansion
+set "MARKER=%~1"
+set "BEGIN=%MARKER%_BEGIN"
+set "END=%MARKER%_END"
+set "COPY="
+for /f "usebackq tokens=1* delims=:" %%A in (`findstr /n "^" "%~f0"`) do (
+  if "%%B"=="%BEGIN%" (
+    set "COPY=1"
+  ) else if "%%B"=="%END%" (
+    set "COPY="
+    goto :emit_block_done
+  ) else if defined COPY (
+    echo %%B
+  )
+)
+:emit_block_done
+endlocal
+exit /b
+
 :flatten_dir
 setlocal EnableDelayedExpansion
 set "TARGET_DIR=%~1"
@@ -307,6 +357,7 @@ exit /b 0
 
 :end
 endlocal
+goto :EOF
 ''').strip('\n')
 
 with open(INSTALLER_NAME, 'w', encoding='utf-8') as output:
@@ -318,3 +369,10 @@ with open(INSTALLER_NAME, 'w', encoding='utf-8') as output:
     output.write('\n\n')
     output.write(utilities)
     output.write('\n')
+
+    for marker, lines in block_data:
+        output.write('\n')
+        output.write(f':{marker}_BEGIN\n')
+        for line in lines:
+            output.write(f'{line}\n')
+        output.write(f':{marker}_END\n')
