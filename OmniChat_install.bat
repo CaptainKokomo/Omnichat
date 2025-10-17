@@ -136,7 +136,7 @@ set "VBS=%TEMP%\omnichat_shortcut.vbs"
   echo Set shell = CreateObject("WScript.Shell")
   echo Set shortcut = shell.CreateShortcut("%SHORTCUT_PATH%")
   echo shortcut.TargetPath = "%RUNTIME_DIR%\electron\electron.exe"
-  echo shortcut.Arguments = Chr^(34^) ^& "%APP_DIR%" ^& Chr^(34^)
+  echo shortcut.Arguments = """%APP_DIR%"""
   echo shortcut.Description = "%APP_NAME%"
   echo shortcut.WorkingDirectory = "%APP_DIR%"
   echo shortcut.IconLocation = "%RUNTIME_DIR%\electron\electron.exe,0"
@@ -1349,11 +1349,7 @@ exit /b
 setlocal DisableDelayedExpansion
 set "TARGET=%~1"
 set "MARKER=%~2"
-> "%TARGET%" (
-  for /f "delims=" %%L in ('call :emit_block %MARKER%') do (
-    echo(%%L
-  )
-)
+call :emit_block %MARKER% > "%TARGET%"
 endlocal
 exit /b
 
@@ -1364,12 +1360,12 @@ set "BEGIN=%MARKER%_BEGIN"
 set "END=%MARKER%_END"
 set "COPY="
 for /f "usebackq tokens=1* delims=:" %%A in (`findstr /n "^" "%~f0"`) do (
-  if "%%B"=="%BEGIN%" (
-    set "COPY=1"
-  ) else if "%%B"=="%END%" (
-    set "COPY="
-    goto :emit_block_done
-  ) else if defined COPY (
+  if not defined COPY (
+    if "%%B"=="%BEGIN%" (
+      set "COPY=1"
+    )
+  ) else (
+    if "%%B"=="%END%" goto :emit_block_done
     echo %%B
   )
 )
