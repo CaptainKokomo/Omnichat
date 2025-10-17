@@ -6,6 +6,8 @@ const settingsModal = document.getElementById('settings-modal');
 const closeSettingsBtn = document.getElementById('close-settings');
 const settingsForm = document.getElementById('settings-form');
 const selectorsTextArea = document.getElementById('selectors-json');
+const siteListEl = document.getElementById('site-list');
+const addSiteBtn = document.getElementById('add-site-btn');
 const composerInput = document.getElementById('composer-input');
 const broadcastBtn = document.getElementById('broadcast-btn');
 const sendSelectedBtn = document.getElementById('send-selected-btn');
@@ -24,6 +26,7 @@ const toolOutputEl = document.getElementById('tool-output');
 let agentCache = [];
 let selectedAgents = new Set();
 let currentSettings = null;
+let currentSites = [];
 
 async function loadAgents() {
   agentCache = await window.omniSwitch.listAgents();
@@ -80,6 +83,174 @@ async function loadSettings() {
 
   const selectors = await window.omniSwitch.getSelectors();
   selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+  await loadSites();
+}
+
+async function loadSites() {
+  const sites = await window.omniSwitch.getSites();
+  currentSites = Object.entries(sites || {}).map(([key, site]) => ({
+    key,
+    name: site?.name || key,
+    url: site?.url || ''
+  }));
+  renderSites();
+}
+
+function renderSites() {
+  if (!siteListEl) return;
+  siteListEl.innerHTML = '';
+
+  if (!currentSites.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = 'No browser assistants yet. Add one to get started.';
+    siteListEl.appendChild(empty);
+    return;
+  }
+
+  currentSites.forEach((site) => {
+    const item = document.createElement('div');
+    item.className = 'site-item';
+    item.dataset.siteKey = site.key;
+
+    const header = document.createElement('header');
+    const title = document.createElement('span');
+    title.textContent = `${site.name || 'Unnamed'} · ${site.key}`;
+    header.appendChild(title);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => removeSite(site.key));
+    header.appendChild(removeBtn);
+
+    item.appendChild(header);
+
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Display name';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = site.name;
+    nameInput.addEventListener('input', (event) => {
+      updateSiteField(site.key, 'name', event.target.value);
+      title.textContent = `${event.target.value || 'Unnamed'} · ${site.key}`;
+    });
+    nameLabel.appendChild(nameInput);
+    item.appendChild(nameLabel);
+
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'Start URL';
+    const urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.value = site.url;
+    urlInput.addEventListener('input', (event) => {
+      updateSiteField(site.key, 'url', event.target.value);
+    });
+    urlLabel.appendChild(urlInput);
+    item.appendChild(urlLabel);
+
+    siteListEl.appendChild(item);
+  });
+}
+
+function updateSiteField(key, field, value) {
+  const site = currentSites.find((entry) => entry.key === key);
+  if (site) {
+    site[field] = value;
+  }
+}
+
+function generateKeyFromName(name) {
+  const base = (name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  let candidate = base || `model-${currentSites.length + 1}`;
+  let index = 1;
+  while (currentSites.some((site) => site.key === candidate)) {
+    candidate = `${base || 'model'}-${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+function normalizeUrl(url) {
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+function ensureSelectorsEntry(siteKey) {
+  let selectors;
+  try {
+    selectors = JSON.parse(selectorsTextArea.value || '{}');
+  } catch (err) {
+    alert('Fix the selectors JSON before adding a new browser assistant.');
+    return false;
+  }
+  if (!selectors[siteKey]) {
+    selectors[siteKey] = {
+      input: ['textarea', "div[contenteditable='true']"],
+      sendButton: ["button[type='submit']", "button[aria-label='Send']"],
+      messageContainer: ['main', "div[class*='conversation']"]
+    };
+    selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+  }
+  return true;
+}
+
+function removeSelectorsEntry(siteKey) {
+  try {
+    const selectors = JSON.parse(selectorsTextArea.value || '{}');
+    if (selectors[siteKey]) {
+      delete selectors[siteKey];
+      selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+    }
+  } catch (err) {
+    // Ignore invalid JSON here; the save routine will surface errors.
+  }
+}
+
+function addSite() {
+  const name = prompt('Name this browser assistant (e.g., Perplexity).');
+  if (!name) {
+    return;
+  }
+  const urlInput = prompt('Paste the chat URL you use for it (https://...).');
+  if (!urlInput) {
+    return;
+  }
+  const url = normalizeUrl(urlInput.trim());
+  const key = generateKeyFromName(name.trim());
+  if (!ensureSelectorsEntry(key)) {
+    return;
+  }
+  currentSites.push({ key, name: name.trim(), url });
+  renderSites();
+}
+
+function removeSite(key) {
+  currentSites = currentSites.filter((site) => site.key !== key);
+  selectedAgents.delete(key);
+  removeSelectorsEntry(key);
+  renderSites();
+}
+
+function buildSitesPayload() {
+  const payload = {};
+  for (const site of currentSites) {
+    const name = site.name?.trim();
+    const url = normalizeUrl(site.url?.trim());
+    if (!name || !url) {
+      alert('Please fill in the name and URL for every browser assistant.');
+      return null;
+    }
+    payload[site.key] = { name, url };
+  }
+  return payload;
 }
 
 settingsForm.addEventListener('submit', async (event) => {
@@ -102,6 +273,11 @@ settingsForm.addEventListener('submit', async (event) => {
     return;
   }
 
+  const sitesPayload = buildSitesPayload();
+  if (!sitesPayload) {
+    return;
+  }
+
   await window.omniSwitch.saveSettings({
     manualConfirm,
     delayRange: { min: delayMin, max: delayMax },
@@ -114,8 +290,10 @@ settingsForm.addEventListener('submit', async (event) => {
       endpoint: localModelEndpoint
     }
   });
+  await window.omniSwitch.saveSites(sitesPayload);
   await window.omniSwitch.saveSelectors(selectors);
   await loadSettings();
+  await loadAgents();
   closeSettings();
 });
 
@@ -268,6 +446,7 @@ quoteSelectionBtn.addEventListener('click', quoteSelection);
 snapshotBtn.addEventListener('click', snapshotPage);
 quickSnippetBtn.addEventListener('click', quickSnippet);
 localModelBtn.addEventListener('click', runLocalModel);
+addSiteBtn.addEventListener('click', addSite);
 
 loadAgents();
 loadSettings();

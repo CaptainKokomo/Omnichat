@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('omniSwitch', {
   getSelectors: () => ipcRenderer.invoke('selectors:get'),
   saveSelectors: (payload) => ipcRenderer.invoke('selectors:save', payload),
+  getSites: () => ipcRenderer.invoke('sites:get'),
+  saveSites: (payload) => ipcRenderer.invoke('sites:save', payload),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (payload) => ipcRenderer.invoke('settings:save', payload),
   listAgents: () => ipcRenderer.invoke('agents:list'),

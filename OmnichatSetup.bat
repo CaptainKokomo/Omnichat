@@ -245,6 +245,28 @@ $files['app/resources/selectors.json'] = @'
 }
 '@
 
+$files['app/resources/sites.json'] = @'
+{
+  "chatgpt": {
+    "name": "ChatGPT",
+    "url": "https://chatgpt.com/"
+  },
+  "claude": {
+    "name": "Claude",
+    "url": "https://claude.ai/"
+  },
+  "copilot": {
+    "name": "Copilot",
+    "url": "https://copilot.microsoft.com/"
+  },
+  "gemini": {
+    "name": "Gemini",
+    "url": "https://gemini.google.com/"
+  }
+}
+
+'@
+
 $files['app/src/main/log-store.js'] = @'
 const { app } = require('electron');
 const fs = require('fs');
@@ -293,6 +315,7 @@ const { LogStore } = require('./log-store');
 
 const APP_NAME = 'Omnichat';
 const SELECTOR_FILE = 'selectors.json';
+const SITES_FILE = 'sites.json';
 const FIRST_RUN_FILE = 'FIRST_RUN.txt';
 
 const defaultSettings = {
@@ -323,6 +346,15 @@ function ensureSelectorsFile() {
   const target = path.join(app.getPath('userData'), SELECTOR_FILE);
   if (!fs.existsSync(target)) {
     const source = resolveResource(SELECTOR_FILE);
+    fs.copyFileSync(source, target);
+  }
+  return target;
+}
+
+function ensureSitesFile() {
+  const target = path.join(app.getPath('userData'), SITES_FILE);
+  if (!fs.existsSync(target)) {
+    const source = resolveResource(SITES_FILE);
     fs.copyFileSync(source, target);
   }
   return target;
@@ -359,9 +391,12 @@ function createWindow() {
 function bootstrapAgentManager() {
   const selectorsPath = ensureSelectorsFile();
   const selectors = JSON.parse(fs.readFileSync(selectorsPath, 'utf8'));
+  const sitesPath = ensureSitesFile();
+  const sites = JSON.parse(fs.readFileSync(sitesPath, 'utf8'));
   agentManager = new AgentManager({
     selectors,
     selectorsPath,
+    sites,
     logStore,
     settingsStore: store
   });
@@ -369,6 +404,7 @@ function bootstrapAgentManager() {
 
 app.on('ready', () => {
   ensureSelectorsFile();
+  ensureSitesFile();
   ensureFirstRunFile();
   bootstrapAgentManager();
   createWindow();
@@ -396,6 +432,19 @@ ipcMain.handle('selectors:save', async (_, payload) => {
   const selectorsPath = ensureSelectorsFile();
   fs.writeFileSync(selectorsPath, JSON.stringify(payload, null, 2), 'utf8');
   agentManager?.updateSelectors(payload);
+  return true;
+});
+
+ipcMain.handle('sites:get', async () => {
+  const sitesPath = ensureSitesFile();
+  const content = fs.readFileSync(sitesPath, 'utf8');
+  return JSON.parse(content);
+});
+
+ipcMain.handle('sites:save', async (_, payload) => {
+  const sitesPath = ensureSitesFile();
+  fs.writeFileSync(sitesPath, JSON.stringify(payload, null, 2), 'utf8');
+  agentManager?.updateSites(payload);
   return true;
 });
 
@@ -443,6 +492,7 @@ ipcMain.handle('open-external', (_, url) => {
 });
 
 ipcMain.handle('first-run:get-path', () => ensureFirstRunFile());
+
 '@
 
 $files['app/src/main/manager.js'] = @'
@@ -451,17 +501,11 @@ const { BrowserWindow, dialog } = require('electron');
 const { randomUUID } = require('crypto');
 const { randomInt } = require('./utils');
 
-const SITES = {
-  chatgpt: { name: 'ChatGPT', url: 'https://chatgpt.com/' },
-  claude: { name: 'Claude', url: 'https://claude.ai/' },
-  copilot: { name: 'Copilot', url: 'https://copilot.microsoft.com/' },
-  gemini: { name: 'Gemini', url: 'https://gemini.google.com/' }
-};
-
 class AgentManager {
-  constructor({ selectors, selectorsPath, logStore, settingsStore }) {
+  constructor({ selectors, selectorsPath, sites, logStore, settingsStore }) {
     this.selectors = selectors;
     this.selectorsPath = selectorsPath;
+    this.sites = sites;
     this.logStore = logStore;
     this.settingsStore = settingsStore;
     this.roundTable = null;
@@ -469,13 +513,18 @@ class AgentManager {
   }
 
   initAgents() {
+    this.agents?.forEach(({ window }) => window.destroy());
     this.agents = new Map();
-    Object.entries(SITES).forEach(([key, site]) => {
+    Object.entries(this.sites || {}).forEach(([key, site]) => {
+      if (!site?.url) {
+        return;
+      }
+      const siteConfig = { ...site, name: site?.name || key };
       const win = new BrowserWindow({
         width: 1280,
         height: 720,
         show: false,
-        title: `${site.name} - Omnichat`,
+        title: `${siteConfig.name} - Omnichat`,
         webPreferences: {
           preload: path.join(__dirname, '../preload/agent-preload.js'),
           contextIsolation: true,
@@ -483,8 +532,8 @@ class AgentManager {
           additionalArguments: [`--agent-key=${key}`]
         }
       });
-      win.loadURL(site.url);
-      this.agents.set(key, { key, site, window: win, status: 'idle' });
+      win.loadURL(this.resolveSiteUrl(key, siteConfig));
+      this.agents.set(key, { key, site: siteConfig, window: win, status: 'idle' });
     });
   }
 
@@ -495,6 +544,35 @@ class AgentManager {
 
   updateSelectors(newSelectors) {
     this.selectors = newSelectors;
+  }
+
+  updateSites(newSites) {
+    this.sites = newSites || {};
+    this.initAgents();
+  }
+
+  resolveSiteUrl(key, site) {
+    if (key === 'copilot') {
+      const host = this.settingsStore.get('copilotHost');
+      if (host) {
+        return this.normalizeUrl(host);
+      }
+    }
+    return this.normalizeUrl(site.url);
+  }
+
+  getSiteName(key) {
+    return this.sites?.[key]?.name || key;
+  }
+
+  normalizeUrl(url) {
+    if (!url) {
+      return url;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
   }
 
   getAgentsInfo() {
@@ -524,7 +602,7 @@ class AgentManager {
   async broadcast({ agents, message }) {
     const activeAgents = agents.filter((key) => this.agents.has(key));
     if (!activeAgents.length) return false;
-    if (!(await this.confirmSend(activeAgents.map((k) => SITES[k].name), message))) {
+    if (!(await this.confirmSend(activeAgents.map((k) => this.getSiteName(k)), message))) {
       return false;
     }
     for (const agentKey of activeAgents) {
@@ -535,7 +613,7 @@ class AgentManager {
 
   async sendToSingle({ agent, message }) {
     if (!this.agents.has(agent)) return false;
-    if (!(await this.confirmSend([SITES[agent].name], message))) {
+    if (!(await this.confirmSend([this.getSiteName(agent)], message))) {
       return false;
     }
     await this.performSend(agent, message);
@@ -568,7 +646,10 @@ class AgentManager {
   async startRoundTable({ agents, message, turns }) {
     const activeAgents = agents.filter((key) => this.agents.has(key));
     if (!activeAgents.length) return false;
-    const confirm = await this.confirmSend(activeAgents.map((k) => SITES[k].name), `Round-table for ${turns} turns. Initial message: ${message}`);
+    const confirm = await this.confirmSend(
+      activeAgents.map((k) => this.getSiteName(k)),
+      `Round-table for ${turns} turns. Initial message: ${message}`
+    );
     if (!confirm) return false;
 
     this.roundTable = {
@@ -595,7 +676,8 @@ class AgentManager {
     this.roundTable.queue.push(this.roundTable.queue.shift());
     this.roundTable.turnsRemaining -= 1;
 
-    const composedMessage = `${this.roundTable.baseMessage}\nTurn remaining: ${this.roundTable.turnsRemaining}`;
+    const composedMessage = `${this.roundTable.baseMessage}
+Turn remaining: ${this.roundTable.turnsRemaining}`;
     await this.performSend(agentKey, composedMessage);
     const throttle = this.settingsStore.get('throttleMs');
     setTimeout(() => this.advanceRoundTable(), throttle);
@@ -661,7 +743,8 @@ class AgentManager {
   }
 }
 
-module.exports = { AgentManager, SITES };
+module.exports = { AgentManager };
+
 '@
 
 $files['app/src/main/settings-store.js'] = @'
@@ -792,6 +875,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('omniSwitch', {
   getSelectors: () => ipcRenderer.invoke('selectors:get'),
   saveSelectors: (payload) => ipcRenderer.invoke('selectors:save', payload),
+  getSites: () => ipcRenderer.invoke('sites:get'),
+  saveSites: (payload) => ipcRenderer.invoke('sites:save', payload),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (payload) => ipcRenderer.invoke('settings:save', payload),
   listAgents: () => ipcRenderer.invoke('agents:list'),
@@ -812,6 +897,7 @@ contextBridge.exposeInMainWorld('omniSwitch', {
 contextBridge.exposeInMainWorld('dialogAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url)
 });
+
 '@
 
 $files['app/src/renderer/index.html'] = @'
@@ -910,6 +996,12 @@ $files['app/src/renderer/index.html'] = @'
               </label>
             </fieldset>
             <fieldset>
+              <legend>Browser assistants</legend>
+              <p class="hint">Add or edit the web chats you want to drive. Everything stays in your browser—no paid APIs required.</p>
+              <div id="site-list" class="site-list"></div>
+              <button type="button" id="add-site-btn">Add browser model</button>
+            </fieldset>
+            <fieldset>
               <legend>Selectors JSON</legend>
               <textarea id="selectors-json" rows="10"></textarea>
             </fieldset>
@@ -924,6 +1016,7 @@ $files['app/src/renderer/index.html'] = @'
     <script src="renderer.js" type="module"></script>
   </body>
 </html>
+
 '@
 
 $files['app/src/renderer/renderer.js'] = @'
@@ -935,6 +1028,8 @@ const settingsModal = document.getElementById('settings-modal');
 const closeSettingsBtn = document.getElementById('close-settings');
 const settingsForm = document.getElementById('settings-form');
 const selectorsTextArea = document.getElementById('selectors-json');
+const siteListEl = document.getElementById('site-list');
+const addSiteBtn = document.getElementById('add-site-btn');
 const composerInput = document.getElementById('composer-input');
 const broadcastBtn = document.getElementById('broadcast-btn');
 const sendSelectedBtn = document.getElementById('send-selected-btn');
@@ -953,6 +1048,7 @@ const toolOutputEl = document.getElementById('tool-output');
 let agentCache = [];
 let selectedAgents = new Set();
 let currentSettings = null;
+let currentSites = [];
 
 async function loadAgents() {
   agentCache = await window.omniSwitch.listAgents();
@@ -1009,6 +1105,174 @@ async function loadSettings() {
 
   const selectors = await window.omniSwitch.getSelectors();
   selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+  await loadSites();
+}
+
+async function loadSites() {
+  const sites = await window.omniSwitch.getSites();
+  currentSites = Object.entries(sites || {}).map(([key, site]) => ({
+    key,
+    name: site?.name || key,
+    url: site?.url || ''
+  }));
+  renderSites();
+}
+
+function renderSites() {
+  if (!siteListEl) return;
+  siteListEl.innerHTML = '';
+
+  if (!currentSites.length) {
+    const empty = document.createElement('p');
+    empty.className = 'hint';
+    empty.textContent = 'No browser assistants yet. Add one to get started.';
+    siteListEl.appendChild(empty);
+    return;
+  }
+
+  currentSites.forEach((site) => {
+    const item = document.createElement('div');
+    item.className = 'site-item';
+    item.dataset.siteKey = site.key;
+
+    const header = document.createElement('header');
+    const title = document.createElement('span');
+    title.textContent = `${site.name || 'Unnamed'} · ${site.key}`;
+    header.appendChild(title);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => removeSite(site.key));
+    header.appendChild(removeBtn);
+
+    item.appendChild(header);
+
+    const nameLabel = document.createElement('label');
+    nameLabel.textContent = 'Display name';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = site.name;
+    nameInput.addEventListener('input', (event) => {
+      updateSiteField(site.key, 'name', event.target.value);
+      title.textContent = `${event.target.value || 'Unnamed'} · ${site.key}`;
+    });
+    nameLabel.appendChild(nameInput);
+    item.appendChild(nameLabel);
+
+    const urlLabel = document.createElement('label');
+    urlLabel.textContent = 'Start URL';
+    const urlInput = document.createElement('input');
+    urlInput.type = 'text';
+    urlInput.value = site.url;
+    urlInput.addEventListener('input', (event) => {
+      updateSiteField(site.key, 'url', event.target.value);
+    });
+    urlLabel.appendChild(urlInput);
+    item.appendChild(urlLabel);
+
+    siteListEl.appendChild(item);
+  });
+}
+
+function updateSiteField(key, field, value) {
+  const site = currentSites.find((entry) => entry.key === key);
+  if (site) {
+    site[field] = value;
+  }
+}
+
+function generateKeyFromName(name) {
+  const base = (name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  let candidate = base || `model-${currentSites.length + 1}`;
+  let index = 1;
+  while (currentSites.some((site) => site.key === candidate)) {
+    candidate = `${base || 'model'}-${index}`;
+    index += 1;
+  }
+  return candidate;
+}
+
+function normalizeUrl(url) {
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url)) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+function ensureSelectorsEntry(siteKey) {
+  let selectors;
+  try {
+    selectors = JSON.parse(selectorsTextArea.value || '{}');
+  } catch (err) {
+    alert('Fix the selectors JSON before adding a new browser assistant.');
+    return false;
+  }
+  if (!selectors[siteKey]) {
+    selectors[siteKey] = {
+      input: ['textarea', "div[contenteditable='true']"],
+      sendButton: ["button[type='submit']", "button[aria-label='Send']"],
+      messageContainer: ['main', "div[class*='conversation']"]
+    };
+    selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+  }
+  return true;
+}
+
+function removeSelectorsEntry(siteKey) {
+  try {
+    const selectors = JSON.parse(selectorsTextArea.value || '{}');
+    if (selectors[siteKey]) {
+      delete selectors[siteKey];
+      selectorsTextArea.value = JSON.stringify(selectors, null, 2);
+    }
+  } catch (err) {
+    // Ignore invalid JSON here; the save routine will surface errors.
+  }
+}
+
+function addSite() {
+  const name = prompt('Name this browser assistant (e.g., Perplexity).');
+  if (!name) {
+    return;
+  }
+  const urlInput = prompt('Paste the chat URL you use for it (https://...).');
+  if (!urlInput) {
+    return;
+  }
+  const url = normalizeUrl(urlInput.trim());
+  const key = generateKeyFromName(name.trim());
+  if (!ensureSelectorsEntry(key)) {
+    return;
+  }
+  currentSites.push({ key, name: name.trim(), url });
+  renderSites();
+}
+
+function removeSite(key) {
+  currentSites = currentSites.filter((site) => site.key !== key);
+  selectedAgents.delete(key);
+  removeSelectorsEntry(key);
+  renderSites();
+}
+
+function buildSitesPayload() {
+  const payload = {};
+  for (const site of currentSites) {
+    const name = site.name?.trim();
+    const url = normalizeUrl(site.url?.trim());
+    if (!name || !url) {
+      alert('Please fill in the name and URL for every browser assistant.');
+      return null;
+    }
+    payload[site.key] = { name, url };
+  }
+  return payload;
 }
 
 settingsForm.addEventListener('submit', async (event) => {
@@ -1031,6 +1295,11 @@ settingsForm.addEventListener('submit', async (event) => {
     return;
   }
 
+  const sitesPayload = buildSitesPayload();
+  if (!sitesPayload) {
+    return;
+  }
+
   await window.omniSwitch.saveSettings({
     manualConfirm,
     delayRange: { min: delayMin, max: delayMax },
@@ -1043,8 +1312,10 @@ settingsForm.addEventListener('submit', async (event) => {
       endpoint: localModelEndpoint
     }
   });
+  await window.omniSwitch.saveSites(sitesPayload);
   await window.omniSwitch.saveSelectors(selectors);
   await loadSettings();
+  await loadAgents();
   closeSettings();
 });
 
@@ -1123,9 +1394,15 @@ async function quoteSelection() {
     toolOutputEl.textContent = 'No selection found.';
     return;
   }
-  const composed = `> ${result.selection.replace(/\n/g, '\n> ')}\n\n`;
-  composerInput.value += `\n${composed}`;
-  toolOutputEl.textContent = `Quoted from ${agent}:\n${result.selection}`;
+  const composed = `> ${result.selection.replace(/
+/g, '
+> ')}
+
+`;
+  composerInput.value += `
+${composed}`;
+  toolOutputEl.textContent = `Quoted from ${agent}:
+${result.selection}`;
 }
 
 async function snapshotPage() {
@@ -1139,8 +1416,14 @@ async function snapshotPage() {
     toolOutputEl.textContent = 'Unable to capture snapshot.';
     return;
   }
-  const snippet = `# ${result.title}\n${result.url}\n\n${result.text}\n\n`;
-  composerInput.value += `\n${snippet}`;
+  const snippet = `# ${result.title}
+${result.url}
+
+${result.text}
+
+`;
+  composerInput.value += `
+${snippet}`;
   toolOutputEl.textContent = `Snapshot from ${result.title}`;
 }
 
@@ -1170,7 +1453,8 @@ async function runLocalModel() {
     return;
   }
   if (response?.output) {
-    toolOutputEl.textContent = `Local model output:\n${response.output}`;
+    toolOutputEl.textContent = `Local model output:
+${response.output}`;
   } else {
     toolOutputEl.textContent = JSON.stringify(response, null, 2);
   }
@@ -1197,11 +1481,13 @@ quoteSelectionBtn.addEventListener('click', quoteSelection);
 snapshotBtn.addEventListener('click', snapshotPage);
 quickSnippetBtn.addEventListener('click', quickSnippet);
 localModelBtn.addEventListener('click', runLocalModel);
+addSiteBtn.addEventListener('click', addSite);
 
 loadAgents();
 loadSettings();
 refreshLog();
 setInterval(refreshLog, 4000);
+
 '@
 
 $files['app/src/renderer/styles.css'] = @'
@@ -1397,6 +1683,54 @@ button:disabled {
   padding: 12px;
 }
 
+.modal-content fieldset .hint {
+  font-size: 12px;
+  color: #9aa0b8;
+  margin: 0 0 12px 0;
+}
+
+.site-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.site-item {
+  border: 1px solid #2b2d3a;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #1f2029;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.site-item header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.site-item header button {
+  background-color: #ff4f5e;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.site-item label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.site-item input[type='text'] {
+  background-color: #111218;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1419,6 +1753,7 @@ button:disabled {
   color: #c7cbe2;
   white-space: pre-wrap;
 }
+
 '@
 
 foreach ($item in $files.GetEnumerator()) {

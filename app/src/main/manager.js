@@ -3,17 +3,11 @@ const { BrowserWindow, dialog } = require('electron');
 const { randomUUID } = require('crypto');
 const { randomInt } = require('./utils');
 
-const SITES = {
-  chatgpt: { name: 'ChatGPT', url: 'https://chatgpt.com/' },
-  claude: { name: 'Claude', url: 'https://claude.ai/' },
-  copilot: { name: 'Copilot', url: 'https://copilot.microsoft.com/' },
-  gemini: { name: 'Gemini', url: 'https://gemini.google.com/' }
-};
-
 class AgentManager {
-  constructor({ selectors, selectorsPath, logStore, settingsStore }) {
+  constructor({ selectors, selectorsPath, sites, logStore, settingsStore }) {
     this.selectors = selectors;
     this.selectorsPath = selectorsPath;
+    this.sites = sites;
     this.logStore = logStore;
     this.settingsStore = settingsStore;
     this.roundTable = null;
@@ -21,13 +15,18 @@ class AgentManager {
   }
 
   initAgents() {
+    this.agents?.forEach(({ window }) => window.destroy());
     this.agents = new Map();
-    Object.entries(SITES).forEach(([key, site]) => {
+    Object.entries(this.sites || {}).forEach(([key, site]) => {
+      if (!site?.url) {
+        return;
+      }
+      const siteConfig = { ...site, name: site?.name || key };
       const win = new BrowserWindow({
         width: 1280,
         height: 720,
         show: false,
-        title: `${site.name} - Omnichat`,
+        title: `${siteConfig.name} - Omnichat`,
         webPreferences: {
           preload: path.join(__dirname, '../preload/agent-preload.js'),
           contextIsolation: true,
@@ -35,8 +34,8 @@ class AgentManager {
           additionalArguments: [`--agent-key=${key}`]
         }
       });
-      win.loadURL(site.url);
-      this.agents.set(key, { key, site, window: win, status: 'idle' });
+      win.loadURL(this.resolveSiteUrl(key, siteConfig));
+      this.agents.set(key, { key, site: siteConfig, window: win, status: 'idle' });
     });
   }
 
@@ -47,6 +46,35 @@ class AgentManager {
 
   updateSelectors(newSelectors) {
     this.selectors = newSelectors;
+  }
+
+  updateSites(newSites) {
+    this.sites = newSites || {};
+    this.initAgents();
+  }
+
+  resolveSiteUrl(key, site) {
+    if (key === 'copilot') {
+      const host = this.settingsStore.get('copilotHost');
+      if (host) {
+        return this.normalizeUrl(host);
+      }
+    }
+    return this.normalizeUrl(site.url);
+  }
+
+  getSiteName(key) {
+    return this.sites?.[key]?.name || key;
+  }
+
+  normalizeUrl(url) {
+    if (!url) {
+      return url;
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
   }
 
   getAgentsInfo() {
@@ -76,7 +104,7 @@ class AgentManager {
   async broadcast({ agents, message }) {
     const activeAgents = agents.filter((key) => this.agents.has(key));
     if (!activeAgents.length) return false;
-    if (!(await this.confirmSend(activeAgents.map((k) => SITES[k].name), message))) {
+    if (!(await this.confirmSend(activeAgents.map((k) => this.getSiteName(k)), message))) {
       return false;
     }
     for (const agentKey of activeAgents) {
@@ -87,7 +115,7 @@ class AgentManager {
 
   async sendToSingle({ agent, message }) {
     if (!this.agents.has(agent)) return false;
-    if (!(await this.confirmSend([SITES[agent].name], message))) {
+    if (!(await this.confirmSend([this.getSiteName(agent)], message))) {
       return false;
     }
     await this.performSend(agent, message);
@@ -120,7 +148,10 @@ class AgentManager {
   async startRoundTable({ agents, message, turns }) {
     const activeAgents = agents.filter((key) => this.agents.has(key));
     if (!activeAgents.length) return false;
-    const confirm = await this.confirmSend(activeAgents.map((k) => SITES[k].name), `Round-table for ${turns} turns. Initial message: ${message}`);
+    const confirm = await this.confirmSend(
+      activeAgents.map((k) => this.getSiteName(k)),
+      `Round-table for ${turns} turns. Initial message: ${message}`
+    );
     if (!confirm) return false;
 
     this.roundTable = {
@@ -213,4 +244,4 @@ class AgentManager {
   }
 }
 
-module.exports = { AgentManager, SITES };
+module.exports = { AgentManager };

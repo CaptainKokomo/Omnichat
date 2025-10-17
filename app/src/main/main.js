@@ -7,6 +7,7 @@ const { LogStore } = require('./log-store');
 
 const APP_NAME = 'Omnichat';
 const SELECTOR_FILE = 'selectors.json';
+const SITES_FILE = 'sites.json';
 const FIRST_RUN_FILE = 'FIRST_RUN.txt';
 
 const defaultSettings = {
@@ -37,6 +38,15 @@ function ensureSelectorsFile() {
   const target = path.join(app.getPath('userData'), SELECTOR_FILE);
   if (!fs.existsSync(target)) {
     const source = resolveResource(SELECTOR_FILE);
+    fs.copyFileSync(source, target);
+  }
+  return target;
+}
+
+function ensureSitesFile() {
+  const target = path.join(app.getPath('userData'), SITES_FILE);
+  if (!fs.existsSync(target)) {
+    const source = resolveResource(SITES_FILE);
     fs.copyFileSync(source, target);
   }
   return target;
@@ -73,9 +83,12 @@ function createWindow() {
 function bootstrapAgentManager() {
   const selectorsPath = ensureSelectorsFile();
   const selectors = JSON.parse(fs.readFileSync(selectorsPath, 'utf8'));
+  const sitesPath = ensureSitesFile();
+  const sites = JSON.parse(fs.readFileSync(sitesPath, 'utf8'));
   agentManager = new AgentManager({
     selectors,
     selectorsPath,
+    sites,
     logStore,
     settingsStore: store
   });
@@ -83,6 +96,7 @@ function bootstrapAgentManager() {
 
 app.on('ready', () => {
   ensureSelectorsFile();
+  ensureSitesFile();
   ensureFirstRunFile();
   bootstrapAgentManager();
   createWindow();
@@ -110,6 +124,19 @@ ipcMain.handle('selectors:save', async (_, payload) => {
   const selectorsPath = ensureSelectorsFile();
   fs.writeFileSync(selectorsPath, JSON.stringify(payload, null, 2), 'utf8');
   agentManager?.updateSelectors(payload);
+  return true;
+});
+
+ipcMain.handle('sites:get', async () => {
+  const sitesPath = ensureSitesFile();
+  const content = fs.readFileSync(sitesPath, 'utf8');
+  return JSON.parse(content);
+});
+
+ipcMain.handle('sites:save', async (_, payload) => {
+  const sitesPath = ensureSitesFile();
+  fs.writeFileSync(sitesPath, JSON.stringify(payload, null, 2), 'utf8');
+  agentManager?.updateSites(payload);
   return true;
 });
 

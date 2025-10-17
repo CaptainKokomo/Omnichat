@@ -9,3 +9,11 @@
 - `OmnichatSetup.bat` — double-click Windows installer that runs silently without extra prompts.
 - `app/` — Omnichat Electron application source for maintainers.
 - `package.json` — metadata for building the Electron app from source if needed.
+
+## Add your own browser assistants (no paid APIs)
+
+1. Launch Omnichat from the desktop shortcut the installer creates.
+2. Click **Settings → Browser assistants → Add browser model**.
+3. Enter the friendly name (for example, “Perplexity”) and paste the chat URL you open in your browser. Omnichat drives the live web page directly—no API keys or paid requests.
+4. Adjust the suggested DOM selectors if the new site needs custom tweaks.
+5. Save. Omnichat spins up a tab for the new assistant instantly so you can broadcast and orchestrate alongside the built-in models.

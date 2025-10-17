@@ -1,0 +1,18 @@
+{
+  "chatgpt": {
+    "name": "ChatGPT",
+    "url": "https://chatgpt.com/"
+  },
+  "claude": {
+    "name": "Claude",
+    "url": "https://claude.ai/"
+  },
+  "copilot": {
+    "name": "Copilot",
+    "url": "https://copilot.microsoft.com/"
+  },
+  "gemini": {
+    "name": "Gemini",
+    "url": "https://gemini.google.com/"
+  }
+}
