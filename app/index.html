@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniChat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="pane pane-left">
+      <header>
+        <h1>OmniChat</h1>
+        <button id="refreshAgents" class="secondary">Refresh</button>
+      </header>
+      <div id="agentList" class="list"></div>
+    </aside>
+    <main class="pane pane-center">
+      <section class="composer">
+        <textarea id="composerInput" placeholder="Type your broadcast message..."></textarea>
+        <div class="composer-actions">
+          <button id="broadcastBtn" class="primary">Broadcast</button>
+          <select id="singleTarget"></select>
+          <button id="singleSendBtn" class="secondary">Send to Selected</button>
+        </div>
+        <div class="round-table">
+          <div class="controls">
+            <label>Turns
+              <input type="number" id="roundTurns" min="1" value="2" />
+            </label>
+            <button id="roundStartBtn" class="secondary">Start Round-table</button>
+            <button id="roundPauseBtn" class="secondary">Pause</button>
+            <button id="roundResumeBtn" class="secondary">Resume</button>
+            <button id="roundStopBtn" class="secondary">Stop</button>
+          </div>
+        </div>
+      </section>
+      <section class="tools">
+        <h2>Tools</h2>
+        <div class="tool-buttons">
+          <button id="quoteBtn" class="secondary">Quote Selection</button>
+          <button id="snapshotBtn" class="secondary">Page Snapshot</button>
+          <button id="attachBtn" class="secondary">Quick Attach Snippet</button>
+        </div>
+        <div class="attachments" id="attachments"></div>
+      </section>
+    </main>
+    <aside class="pane pane-right">
+      <header class="pane-header">
+        <div>
+          <h2>Live Log</h2>
+          <button id="exportLogBtn" class="secondary">Export</button>
+        </div>
+        <button id="openSettings" class="secondary">Settings</button>
+      </header>
+      <div id="logView" class="log"></div>
+    </aside>
+  </div>
+
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-body">
+      <p id="confirmMessage">Send this message?</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="secondary">Cancel</button>
+        <button id="confirmOk" class="primary">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-body settings">
+      <header>
+        <h2>Settings</h2>
+        <button id="closeSettings" class="secondary">Close</button>
+      </header>
+      <section>
+        <h3>Delays & Limits</h3>
+        <div class="grid">
+          <label>Confirm before send
+            <input type="checkbox" id="confirmToggle" checked />
+          </label>
+          <label>Delay min (ms)
+            <input type="number" id="delayMin" min="0" />
+          </label>
+          <label>Delay max (ms)
+            <input type="number" id="delayMax" min="0" />
+          </label>
+          <label>Message memory (N)
+            <input type="number" id="messageLimit" min="1" />
+          </label>
+          <label>Default turns (K)
+            <input type="number" id="defaultTurns" min="1" />
+          </label>
+          <label>Copilot host
+            <input type="text" id="copilotHost" />
+          </label>
+        </div>
+      </section>
+      <section>
+        <h3>Browser Assistants</h3>
+        <div id="siteEditor"></div>
+        <button id="addSiteBtn" class="secondary">Add Site</button>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

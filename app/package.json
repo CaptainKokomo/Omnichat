@@ -1,0 +1,10 @@
+{
+  "name": "omnichat",
+  "version": "1.0.0",
+  "description": "OmniChat orchestrates browser-based AI assistants.",
+  "main": "main.js",
+  "author": "OmniChat",
+  "license": "SEE LICENSE IN INSTALLER",
+  "dependencies": {},
+  "type": "commonjs"
+}
