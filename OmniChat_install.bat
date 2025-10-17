@@ -71,6 +71,8 @@ if errorlevel 1 (
   echo Failed to extract Node.js.
   exit /b 1
 )
+call :flatten_dir "%RUNTIME_DIR%\node" node.exe
+if errorlevel 1 exit /b 1
 
 echo Downloading Electron runtime...
 curl.exe -L -# -o "%ELECTRON_ZIP%" "%ELECTRON_URL%"
@@ -85,6 +87,8 @@ if errorlevel 1 (
   echo Failed to extract Electron.
   exit /b 1
 )
+call :flatten_dir "%RUNTIME_DIR%\electron" electron.exe
+if errorlevel 1 exit /b 1
 
 echo Writing application files...
 call :write_agentPreload_js "%APP_DIR%\agentPreload.js"
@@ -128,6 +132,36 @@ set "VBS=%TEMP%\omnichat_shortcut.vbs"
 cscript //NoLogo "%VBS%"
 del "%VBS%" >nul 2>nul
 exit /b
+
+:flatten_dir
+setlocal EnableDelayedExpansion
+set "TARGET_DIR=%~1"
+set "TARGET_FILE=%~2"
+if exist "!TARGET_DIR!\!TARGET_FILE!" (
+  endlocal
+  exit /b 0
+)
+for /d %%D in ("!TARGET_DIR!\*") do (
+  if exist "%%~fD\!TARGET_FILE!" (
+    echo Normalizing runtime layout in %%~nxD...
+    robocopy "%%~fD" "!TARGET_DIR!" /E /MOVE >nul
+    if errorlevel 8 (
+      echo Failed to normalize %%~fD.
+      endlocal
+      exit /b 1
+    )
+    if exist "%%~fD" rd /s /q "%%~fD"
+    goto :flatten_dir_check
+  )
+)
+:flatten_dir_check
+if not exist "!TARGET_DIR!\!TARGET_FILE!" (
+  echo Required file !TARGET_FILE! not found under !TARGET_DIR!.
+  endlocal
+  exit /b 1
+)
+endlocal
+exit /b 0
 
 :write_agentPreload_js
 setlocal DisableDelayedExpansion
