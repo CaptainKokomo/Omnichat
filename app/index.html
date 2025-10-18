@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniChat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <aside class="pane pane-left">
+      <header>
+        <div class="title-block">
+          <h1>OmniChat</h1>
+          <p id="assistantSummary" class="subtitle">Loading assistants…</p>
+        </div>
+        <div class="header-actions">
+          <button id="refreshAgents" class="secondary">Refresh</button>
+          <button id="manageAssistants" class="secondary">Manage</button>
+        </div>
+      </header>
+      <div id="agentList" class="list"></div>
+    </aside>
+    <main class="pane pane-center">
+      <section class="composer">
+        <textarea id="composerInput" placeholder="Type your broadcast message..."></textarea>
+        <div class="composer-actions">
+          <button id="broadcastBtn" class="primary">Broadcast</button>
+          <select id="singleTarget"></select>
+          <button id="singleSendBtn" class="secondary">Send to Selected</button>
+        </div>
+        <div class="target-chips">
+          <span class="target-label">Choose assistants:</span>
+          <div id="targetChips" class="chip-list"></div>
+        </div>
+        <div class="round-table">
+          <div class="controls">
+            <label>Turns
+              <input type="number" id="roundTurns" min="1" value="2" />
+            </label>
+            <button id="roundStartBtn" class="secondary">Start Round-table</button>
+            <button id="roundPauseBtn" class="secondary">Pause</button>
+            <button id="roundResumeBtn" class="secondary">Resume</button>
+            <button id="roundStopBtn" class="secondary">Stop</button>
+          </div>
+        </div>
+      </section>
+      <section class="tools">
+        <h2>Tools</h2>
+        <div class="tool-buttons">
+          <button id="quoteBtn" class="secondary">Quote Selection</button>
+          <button id="snapshotBtn" class="secondary">Page Snapshot</button>
+          <button id="attachBtn" class="secondary">Quick Attach Snippet</button>
+        </div>
+        <div class="attachments" id="attachments"></div>
+        <section class="local-studio">
+          <header class="studio-header">
+            <h2>Local Studio</h2>
+            <p>Blend local AI outputs with your broadcast without leaving OmniChat.</p>
+          </header>
+          <div class="studio-grid">
+            <div class="studio-card">
+              <header>
+                <h3>Ollama Text Models</h3>
+                <div class="inline-controls">
+                  <label>Host
+                    <input type="text" id="ollamaHostField" placeholder="http://127.0.0.1:11434" />
+                  </label>
+                  <button id="ollamaRefresh" class="secondary" type="button">Refresh Models</button>
+                </div>
+              </header>
+              <div class="studio-body">
+                <label>Model
+                  <select id="ollamaModelSelect"></select>
+                </label>
+                <label>Prompt
+                  <textarea id="ollamaPrompt" rows="6" placeholder="Ask your local model..."></textarea>
+                </label>
+                <div class="studio-actions">
+                  <button id="ollamaGenerate" class="primary" type="button">Generate</button>
+                  <button id="ollamaInsert" class="secondary" type="button">Insert to Composer</button>
+                </div>
+                <div id="ollamaOutput" class="studio-output" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="studio-card">
+              <header>
+                <h3>ComfyUI Visuals</h3>
+                <div class="inline-controls">
+                  <label>Host
+                    <input type="text" id="comfyHostField" placeholder="http://127.0.0.1:8188" />
+                  </label>
+                  <button id="comfyRefresh" class="secondary" type="button">Fetch Latest</button>
+                  <button id="comfyRun" class="secondary" type="button">Run Workflow…</button>
+                </div>
+              </header>
+              <div class="studio-body">
+                <div id="comfyStatus" class="studio-status">No ComfyUI results yet.</div>
+                <div id="comfyGallery" class="gallery"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <aside class="pane pane-right">
+      <header class="pane-header">
+        <div>
+          <h2>Live Log</h2>
+          <button id="exportLogBtn" class="secondary">Export</button>
+        </div>
+        <button id="openSettings" class="secondary" type="button">Settings</button>
+      </header>
+      <div id="logView" class="log"></div>
+    </aside>
+  </div>
+
+  <div id="confirmModal" class="modal hidden">
+    <div class="modal-body">
+      <p id="confirmMessage">Send this message?</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="secondary">Cancel</button>
+        <button id="confirmOk" class="primary">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-body settings">
+      <header>
+        <h2>Settings</h2>
+        <button id="closeSettings" class="secondary" type="button">Save &amp; Close</button>
+      </header>
+      <section>
+        <h3>Delays & Limits</h3>
+        <div class="grid">
+          <label>Confirm before send
+            <input type="checkbox" id="confirmToggle" checked />
+          </label>
+          <label>Delay min (ms)
+            <input type="number" id="delayMin" min="0" />
+          </label>
+          <label>Delay max (ms)
+            <input type="number" id="delayMax" min="0" />
+          </label>
+          <label>Message memory (N)
+            <input type="number" id="messageLimit" min="1" />
+          </label>
+          <label>Default turns (K)
+            <input type="number" id="defaultTurns" min="1" />
+          </label>
+          <label>Copilot host
+            <input type="text" id="copilotHost" />
+          </label>
+          <label>ComfyUI host
+            <input type="text" id="settingsComfyHost" />
+          </label>
+          <label class="checkbox">Auto-import ComfyUI results
+            <input type="checkbox" id="settingsComfyAuto" />
+          </label>
+          <label>Ollama host
+            <input type="text" id="settingsOllamaHost" />
+          </label>
+          <label>Preferred Ollama model
+            <input type="text" id="settingsOllamaModel" />
+          </label>
+        </div>
+      </section>
+      <section>
+        <h3>Browser Assistants</h3>
+        <p class="section-help">Toggle or edit any assistant below. Use the guided form to add new browser UIs without touching JSON.</p>
+        <div class="add-site-form">
+          <h4>Add new assistant</h4>
+          <div class="grid">
+            <label>Assistant name
+              <input type="text" id="newSiteName" placeholder="Perplexity" />
+            </label>
+            <label>Assistant key
+              <input type="text" id="newSiteKey" placeholder="perplexity" />
+            </label>
+            <label>Start with template
+              <select id="newSiteTemplate"></select>
+            </label>
+            <label>Home URL
+              <input type="text" id="newSiteHome" placeholder="https://example.com/" />
+            </label>
+            <label>URL patterns (one per line)
+              <textarea id="newSitePatterns" rows="3" placeholder="https://example.com/*"></textarea>
+            </label>
+            <label>Input selectors
+              <textarea id="newSiteInput" rows="3" placeholder="textarea&#10;div[contenteditable='true']"></textarea>
+            </label>
+            <label>Send button selectors
+              <textarea id="newSiteSend" rows="3" placeholder="button[type='submit']"></textarea>
+            </label>
+            <label>Message container selectors
+              <textarea id="newSiteMessages" rows="3" placeholder="main&#10;div[class*='conversation']"></textarea>
+            </label>
+          </div>
+          <div class="add-site-actions">
+            <button id="addSiteBtn" class="primary" type="button">Create Assistant</button>
+            <button id="resetSiteForm" class="secondary" type="button">Clear Form</button>
+          </div>
+          <p class="section-hint">Keys must use letters, numbers, or hyphen. OmniChat copies the template selectors if you pick one, so you only need to tweak the pieces that differ.</p>
+        </div>
+        <div id="siteEditor"></div>
+      </section>
+      <section>
+        <h3>Utilities</h3>
+        <div class="utility-actions">
+          <button id="importSelectorsBtn" class="secondary" type="button">Import selectors.json…</button>
+          <button id="exportSelectorsBtn" class="secondary" type="button">Export selectors.json…</button>
+          <button id="openConfigBtn" class="secondary" type="button">Open config folder</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>
