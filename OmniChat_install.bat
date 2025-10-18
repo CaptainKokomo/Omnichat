@@ -161,7 +161,7 @@ exit /b
 :write_index_html
 setlocal DisableDelayedExpansion
 > "%~1" (
-  echo ^<!DOCTYPE html^>
+  echo ^<^!DOCTYPE html^>
   echo ^<html lang="en"^>
   echo ^<head^>
   echo   ^<meta charset="UTF-8" /^>
@@ -461,7 +461,7 @@ setlocal DisableDelayedExpansion
   echo   sendMessage^(cfg, context = {}^) {
   echo     const { text = '' } = context;
   echo     const findFirst = ^(selectors^) =^> {
-  echo       if ^(!selectors^) return null;
+  echo       if ^(^!selectors^) return null;
   echo       for ^(const selector of selectors^) {
   echo         try {
   echo           const el = document.querySelector^(selector^);
@@ -474,7 +474,7 @@ setlocal DisableDelayedExpansion
   echo     };
   echo.
   echo     const input = findFirst^(cfg.input^);
-  echo     if ^(!input^) {
+  echo     if ^(^!input^) {
   echo       return { ok: false, reason: 'input' };
   echo     }
   echo.
@@ -513,7 +513,7 @@ setlocal DisableDelayedExpansion
   echo.
   echo     const bannerId = '__omnichat_hint';
   echo     let banner = document.getElementById^(bannerId^);
-  echo     if ^(!banner^) {
+  echo     if ^(^!banner^) {
   echo       banner = document.createElement^('div'^);
   echo       banner.id = bannerId;
   echo       banner.style.position = 'fixed';
@@ -541,7 +541,7 @@ setlocal DisableDelayedExpansion
   echo   readMessages^(cfg, context = {}^) {
   echo     const { limit = 5 } = context;
   echo     const findFirst = ^(selectors^) =^> {
-  echo       if ^(!selectors^) return null;
+  echo       if ^(^!selectors^) return null;
   echo       for ^(const selector of selectors^) {
   echo         try {
   echo           const el = document.querySelector^(selector^);
@@ -554,7 +554,7 @@ setlocal DisableDelayedExpansion
   echo     };
   echo.
   echo     const container = findFirst^(cfg.messageContainer^);
-  echo     if ^(!container^) {
+  echo     if ^(^!container^) {
   echo       return { ok: false, reason: 'messageContainer' };
   echo     }
   echo.
@@ -562,7 +562,7 @@ setlocal DisableDelayedExpansion
   echo     const transcript = [];
   echo     while ^(walker.nextNode^(^)^) {
   echo       const node = walker.currentNode;
-  echo       if ^(!node^) continue;
+  echo       if ^(^!node^) continue;
   echo       if ^(node.childElementCount === 0^) {
   echo         const text = ^(node.textContent ^|^| ''^).trim^(^);
   echo         if ^(text^) {
@@ -573,7 +573,7 @@ setlocal DisableDelayedExpansion
   echo.
   echo     const deduped = [];
   echo     for ^(const line of transcript^) {
-  echo       if ^(!deduped.length ^|^| deduped[deduped.length - 1] !== line^) {
+  echo       if ^(^!deduped.length ^|^| deduped[deduped.length - 1] ^!== line^) {
   echo         deduped.push^(line^);
   echo       }
   echo     }
@@ -614,12 +614,12 @@ setlocal DisableDelayedExpansion
   echo.
   echo function createDomScript^(config, taskName, context, settings^) {
   echo   const task = DOM_TASKS[taskName];
-  echo   if ^(!task^) {
+  echo   if ^(^!task^) {
   echo     throw new Error^(`Unknown DOM task ${taskName}`^);
   echo   }
   echo   const safeContext = {
   echo     ...context,
-  echo     limit: context ^&^& typeof context.limit !== 'undefined' ? context.limit : settings.messageLimit ^|^| DEFAULT_SETTINGS.messageLimit
+  echo     limit: context ^&^& typeof context.limit ^!== 'undefined' ? context.limit : settings.messageLimit ^|^| DEFAULT_SETTINGS.messageLimit
   echo   };
   echo   const payload = {
   echo     cfg: pickSelectors^(config^),
@@ -636,7 +636,7 @@ setlocal DisableDelayedExpansion
   echo.
   echo   load^(^) {
   echo     try {
-  echo       if ^(!fs.existsSync^(this.filePath^)^) {
+  echo       if ^(^!fs.existsSync^(this.filePath^)^) {
   echo         const initial = JSON.stringify^(this.defaults, null, 2^);
   echo         fs.mkdirSync^(path.dirname^(this.filePath^), { recursive: true }^);
   echo         fs.writeFileSync^(this.filePath, initial, 'utf8'^);
@@ -644,7 +644,7 @@ setlocal DisableDelayedExpansion
   echo       }
   echo       const raw = fs.readFileSync^(this.filePath, 'utf8'^);
   echo       const data = JSON.parse^(raw^);
-  echo       if ^(Array.isArray^(this.defaults^) ^|^| typeof this.defaults !== 'object'^) {
+  echo       if ^(Array.isArray^(this.defaults^) ^|^| typeof this.defaults ^!== 'object'^) {
   echo         return data;
   echo       }
   echo       return { ...this.defaults, ...data };
@@ -676,7 +676,7 @@ setlocal DisableDelayedExpansion
   echo   }
   echo.
   echo   updateConfig^(^) {
-  echo     if ^(!this.getConfig^(^)^) {
+  echo     if ^(^!this.getConfig^(^)^) {
   echo       this.destroy^(^);
   echo     }
   echo   }
@@ -685,12 +685,12 @@ setlocal DisableDelayedExpansion
   echo     if ^(this.destroyed^) {
   echo       throw new Error^('agent_removed'^);
   echo     }
-  echo     if ^(this.window ^&^& !this.window.isDestroyed^(^)^) {
+  echo     if ^(this.window ^&^& ^!this.window.isDestroyed^(^)^) {
   echo       return this.window;
   echo     }
   echo.
   echo     const config = this.getConfig^(^);
-  echo     if ^(!config^) {
+  echo     if ^(^!config^) {
   echo       throw new Error^('unknown_agent'^);
   echo     }
   echo.
@@ -762,7 +762,7 @@ setlocal DisableDelayedExpansion
   echo   }
   echo.
   echo   hide^(^) {
-  echo     if ^(this.window ^&^& !this.window.isDestroyed^(^)^) {
+  echo     if ^(this.window ^&^& ^!this.window.isDestroyed^(^)^) {
   echo       this.window.hide^(^);
   echo     }
   echo     updateAgentStatus^(this.key, { visible: false }^);
@@ -771,7 +771,7 @@ setlocal DisableDelayedExpansion
   echo   async runTask^(taskName, context = {}^) {
   echo     const job = this.queue.then^(async ^(^) =^> {
   echo       const config = this.getConfig^(^);
-  echo       if ^(!config^) {
+  echo       if ^(^!config^) {
   echo         throw new Error^('unknown_agent'^);
   echo       }
   echo       const win = await this.ensureWindow^(^);
@@ -785,7 +785,7 @@ setlocal DisableDelayedExpansion
   echo.
   echo   destroy^(^) {
   echo     this.destroyed = true;
-  echo     if ^(this.window ^&^& !this.window.isDestroyed^(^)^) {
+  echo     if ^(this.window ^&^& ^!this.window.isDestroyed^(^)^) {
   echo       const win = this.window;
   echo       this.window = null;
   echo       win.removeAllListeners^('close'^);
@@ -815,14 +815,14 @@ setlocal DisableDelayedExpansion
   echo.
   echo function ensureDirectories^(^) {
   echo   [INSTALL_ROOT, CONFIG_ROOT, LOG_ROOT].forEach^(^(dir^) =^> {
-  echo     if ^(!fs.existsSync^(dir^)^) {
+  echo     if ^(^!fs.existsSync^(dir^)^) {
   echo       fs.mkdirSync^(dir, { recursive: true }^);
   echo     }
   echo   }^);
   echo }
   echo.
   echo function ensureFirstRunGuide^(^) {
-  echo   if ^(!fs.existsSync^(FIRST_RUN_PATH^)^) {
+  echo   if ^(^!fs.existsSync^(FIRST_RUN_PATH^)^) {
   echo     const guide = [
   echo       '1. Install OmniChat using OmniChat_install.bat.',
   echo       '2. Open OmniChat from the desktop shortcut.',
@@ -851,7 +851,7 @@ setlocal DisableDelayedExpansion
   echo     type: patch?.type ^|^| current.type ^|^| ^(isLocalAgent^(key^) ? 'local' : 'web'^)
   echo   };
   echo   agentStatus.set^(key, next^);
-  echo   if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo     appState.mainWindow.webContents.send^('agent:status', next^);
   echo   }
   echo }
@@ -879,7 +879,7 @@ setlocal DisableDelayedExpansion
   echo       type: entry.type ^|^| ^(isLocalAgent^(entry.key^) ? 'local' : 'web'^)
   echo     };
   echo   }^);
-  echo   if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo     appState.mainWindow.webContents.send^('agent:status:init', payload^);
   echo   }
   echo }
@@ -887,7 +887,7 @@ setlocal DisableDelayedExpansion
   echo function refreshAgentSessions^(^) {
   echo   const keys = Object.keys^(appState.selectors^);
   echo   keys.forEach^(^(key^) =^> {
-  echo     if ^(!agentSessions.has^(key^)^) {
+  echo     if ^(^!agentSessions.has^(key^)^) {
   echo       const session = new AgentSession^(key, ^(^) =^> appState.selectors[key]^);
   echo       agentSessions.set^(key, session^);
   echo     } else {
@@ -897,7 +897,7 @@ setlocal DisableDelayedExpansion
   echo   }^);
   echo.
   echo   for ^(const key of Array.from^(agentSessions.keys^(^)^)^) {
-  echo     if ^(!appState.selectors[key]^) {
+  echo     if ^(^!appState.selectors[key]^) {
   echo       const session = agentSessions.get^(key^);
   echo       session.destroy^(^);
   echo       agentSessions.delete^(key^);
@@ -930,7 +930,7 @@ setlocal DisableDelayedExpansion
   echo }
   echo.
   echo function sanitizeLocalHistory^(^) {
-  echo   if ^(!Array.isArray^(appState.localHistory^)^) {
+  echo   if ^(^!Array.isArray^(appState.localHistory^)^) {
   echo     appState.localHistory = [];
   echo   }
   echo   if ^(appState.localHistory.length ^> 100^) {
@@ -939,9 +939,9 @@ setlocal DisableDelayedExpansion
   echo }
   echo.
   echo function getAgentSession^(key^) {
-  echo   if ^(!agentSessions.has^(key^)^) {
+  echo   if ^(^!agentSessions.has^(key^)^) {
   echo     const config = appState.selectors[key];
-  echo     if ^(!config^) {
+  echo     if ^(^!config^) {
   echo       throw new Error^('unknown_agent'^);
   echo     }
   echo     const session = new AgentSession^(key, ^(^) =^> appState.selectors[key]^);
@@ -988,7 +988,7 @@ setlocal DisableDelayedExpansion
   echo   if ^(logBuffer.length ^> 5000^) {
   echo     logBuffer.shift^(^);
   echo   }
-  echo   if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo     appState.mainWindow.webContents.send^('log:push', line^);
   echo   }
   echo   const logFile = path.join^(LOG_ROOT, `${new Date^(^).toISOString^(^).slice^(0, 10^)}.log`^);
@@ -1009,14 +1009,14 @@ setlocal DisableDelayedExpansion
   echo.
   echo   try {
   echo     const result = await session.runTask^('sendMessage', { text }^);
-  echo     if ^(!result ^|^| !result.ok^) {
+  echo     if ^(^!result ^|^| ^!result.ok^) {
   echo       throw new Error^(result ? result.reason ^|^| 'send' : 'send'^);
   echo     }
   echo     recordLog^(`${key}: message sent via ${result.via}`^);
   echo     return result;
   echo   } catch ^(error^) {
   echo     recordLog^(`${key}: send failed ^(${error.message ^|^| error}^)`^);
-  echo     if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo     if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo       appState.mainWindow.webContents.send^('app:toast', `${key}.${error.message ^|^| 'send'} selectors need attention.`^);
   echo     }
   echo     throw error;
@@ -1031,13 +1031,13 @@ setlocal DisableDelayedExpansion
   echo   try {
   echo     const session = getAgentSession^(key^);
   echo     const result = await session.runTask^('readMessages', { limit: appState.settings.messageLimit }^);
-  echo     if ^(!result ^|^| !result.ok^) {
+  echo     if ^(^!result ^|^| ^!result.ok^) {
   echo       throw new Error^(result ? result.reason ^|^| 'read' : 'read'^);
   echo     }
   echo     return result.messages ^|^| [];
   echo   } catch ^(error^) {
   echo     recordLog^(`${key}: read failed ^(${error.message ^|^| error}^)`^);
-  echo     if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo     if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo       appState.mainWindow.webContents.send^('app:toast', `${key}.${error.message ^|^| 'read'} selectors need attention.`^);
   echo     }
   echo     return [];
@@ -1045,13 +1045,13 @@ setlocal DisableDelayedExpansion
   echo }
   echo.
   echo function withTrailingSlash^(url^) {
-  echo   if ^(!url^) return '';
+  echo   if ^(^!url^) return '';
   echo   return url.endsWith^('/'^) ? url : `${url}/`;
   echo }
   echo.
   echo async function fetchJson^(url, options = {}^) {
   echo   const response = await fetch^(url, options^);
-  echo   if ^(!response.ok^) {
+  echo   if ^(^!response.ok^) {
   echo     const text = await response.text^(^).catch^(^(^) =^> ''^);
   echo     throw new Error^(`HTTP ${response.status}: ${text.slice^(0, 140^)}`^);
   echo   }
@@ -1130,7 +1130,7 @@ setlocal DisableDelayedExpansion
   echo   const host = asset.host ^|^| appState.settings.comfyHost ^|^| DEFAULT_SETTINGS.comfyHost;
   echo   const assetUrl = buildComfyAssetURL^(host, asset^);
   echo   const response = await fetch^(assetUrl^);
-  echo   if ^(!response.ok^) {
+  echo   if ^(^!response.ok^) {
   echo     throw new Error^(`HTTP ${response.status}`^);
   echo   }
   echo   const arrayBuffer = await response.arrayBuffer^(^);
@@ -1140,7 +1140,7 @@ setlocal DisableDelayedExpansion
   echo }
   echo.
   echo async function runComfyWorkflowFromFile^(hostOverride^) {
-  echo   if ^(!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(^!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
   echo     return { ok: false, error: 'window_closed' };
   echo   }
   echo   const result = await dialog.showOpenDialog^(appState.mainWindow, {
@@ -1148,7 +1148,7 @@ setlocal DisableDelayedExpansion
   echo     filters: [{ name: 'JSON Files', extensions: ['json'] }],
   echo     properties: ['openFile']
   echo   }^);
-  echo   if ^(result.canceled ^|^| !result.filePaths.length^) {
+  echo   if ^(result.canceled ^|^| ^!result.filePaths.length^) {
   echo     return { ok: false, canceled: true };
   echo   }
   echo   const host = hostOverride ^|^| appState.settings.comfyHost ^|^| DEFAULT_SETTINGS.comfyHost;
@@ -1160,7 +1160,7 @@ setlocal DisableDelayedExpansion
   echo     headers: { 'Content-Type': 'application/json' },
   echo     body: JSON.stringify^(workflow^)
   echo   }^);
-  echo   if ^(!response.ok^) {
+  echo   if ^(^!response.ok^) {
   echo     const text = await response.text^(^).catch^(^(^) =^> ''^);
   echo     throw new Error^(`HTTP ${response.status}: ${text.slice^(0, 140^)}`^);
   echo   }
@@ -1182,7 +1182,7 @@ setlocal DisableDelayedExpansion
   echo     headers: { 'Content-Type': 'application/json' },
   echo     body: JSON.stringify^({ model, prompt, stream: true }^)
   echo   }^);
-  echo   if ^(!response.ok^) {
+  echo   if ^(^!response.ok^) {
   echo     const text = await response.text^(^).catch^(^(^) =^> ''^);
   echo     throw new Error^(`HTTP ${response.status}: ${text.slice^(0, 140^)}`^);
   echo   }
@@ -1200,7 +1200,7 @@ setlocal DisableDelayedExpansion
   echo       while ^(^(index = remainder.indexOf^('\n'^)^) ^>= 0^) {
   echo         const line = remainder.slice^(0, index^).trim^(^);
   echo         remainder = remainder.slice^(index + 1^);
-  echo         if ^(!line^) continue;
+  echo         if ^(^!line^) continue;
   echo         try {
   echo           const parsed = JSON.parse^(line^);
   echo           if ^(parsed.response^) {
@@ -1263,7 +1263,7 @@ setlocal DisableDelayedExpansion
   echo }^);
   echo.
   echo ipcMain.handle^('selectors:importFile', async ^(^) =^> {
-  echo   if ^(!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(^!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
   echo     return { ok: false, error: 'window_closed' };
   echo   }
   echo   const result = await dialog.showOpenDialog^(appState.mainWindow, {
@@ -1271,7 +1271,7 @@ setlocal DisableDelayedExpansion
   echo     filters: [{ name: 'JSON Files', extensions: ['json'] }],
   echo     properties: ['openFile']
   echo   }^);
-  echo   if ^(result.canceled ^|^| !result.filePaths.length^) {
+  echo   if ^(result.canceled ^|^| ^!result.filePaths.length^) {
   echo     return { ok: false, canceled: true };
   echo   }
   echo   const filePath = result.filePaths[0];
@@ -1288,7 +1288,7 @@ setlocal DisableDelayedExpansion
   echo }^);
   echo.
   echo ipcMain.handle^('selectors:exportFile', async ^(^) =^> {
-  echo   if ^(!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(^!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
   echo     return { ok: false, error: 'window_closed' };
   echo   }
   echo   const result = await dialog.showSaveDialog^(appState.mainWindow, {
@@ -1296,7 +1296,7 @@ setlocal DisableDelayedExpansion
   echo     filters: [{ name: 'JSON Files', extensions: ['json'] }],
   echo     defaultPath: path.join^(app.getPath^('documents'^), 'omnichat-selectors.json'^)
   echo   }^);
-  echo   if ^(result.canceled ^|^| !result.filePath^) {
+  echo   if ^(result.canceled ^|^| ^!result.filePath^) {
   echo     return { ok: false, canceled: true };
   echo   }
   echo   try {
@@ -1352,7 +1352,7 @@ setlocal DisableDelayedExpansion
   echo   const { key, text } = payload ^|^| {};
   echo   if ^(isLocalAgent^(key^)^) {
   echo     const prompt = text ^|^| '';
-  echo     if ^(!prompt.trim^(^)^) {
+  echo     if ^(^!prompt.trim^(^)^) {
   echo       throw new Error^('empty_prompt'^);
   echo     }
   echo     try {
@@ -1360,9 +1360,9 @@ setlocal DisableDelayedExpansion
   echo       sanitizeLocalHistory^(^);
   echo       const existingModel = appState.settings.ollamaModel;
   echo       let model = existingModel;
-  echo       if ^(!model^) {
+  echo       if ^(^!model^) {
   echo         const models = await listOllamaModels^(^);
-  echo         if ^(!models.length^) {
+  echo         if ^(^!models.length^) {
   echo           throw new Error^('no_local_models'^);
   echo         }
   echo         model = models[0];
@@ -1377,7 +1377,7 @@ setlocal DisableDelayedExpansion
   echo       appState.localHistory.push^({ direction: 'in', text: response, model, timestamp: Date.now^(^) }^);
   echo       sanitizeLocalHistory^(^);
   echo       recordLog^(`${key}: ${response.slice^(0, 140^)}${response.length ^> 140 ? '…' : ''}`^);
-  echo       if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo       if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo         appState.mainWindow.webContents.send^('agent:localMessage', {
   echo           key,
   echo           model,
@@ -1390,7 +1390,7 @@ setlocal DisableDelayedExpansion
   echo     } catch ^(error^) {
   echo       ensureLocalAgentStatus^({ status: 'error', error: error.message ^|^| String^(error^) }^);
   echo       recordLog^(`${key}: generation failed ^(${error.message ^|^| error}^)`^);
-  echo       if ^(appState.mainWindow ^&^& !appState.mainWindow.isDestroyed^(^)^) {
+  echo       if ^(appState.mainWindow ^&^& ^!appState.mainWindow.isDestroyed^(^)^) {
   echo         appState.mainWindow.webContents.send^('app:toast', `Local model: ${error.message ^|^| error}`^);
   echo       }
   echo       throw error;
@@ -1423,7 +1423,7 @@ setlocal DisableDelayedExpansion
   echo }^);
   echo.
   echo ipcMain.handle^('log:export', async ^(_event, payload^) =^> {
-  echo   if ^(!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
+  echo   if ^(^!appState.mainWindow ^|^| appState.mainWindow.isDestroyed^(^)^) {
   echo     return { ok: false };
   echo   }
   echo   const dialogResult = await dialog.showSaveDialog^(appState.mainWindow, {
@@ -1431,7 +1431,7 @@ setlocal DisableDelayedExpansion
   echo     filters: [{ name: 'Text Files', extensions: ['txt'] }],
   echo     defaultPath: path.join^(app.getPath^('documents'^), `omnichat-log-${Date.now^(^)}.txt`^)
   echo   }^);
-  echo   if ^(dialogResult.canceled ^|^| !dialogResult.filePath^) {
+  echo   if ^(dialogResult.canceled ^|^| ^!dialogResult.filePath^) {
   echo     return { ok: false };
   echo   }
   echo   fs.writeFileSync^(dialogResult.filePath, payload ^|^| '', 'utf8'^);
@@ -1439,7 +1439,7 @@ setlocal DisableDelayedExpansion
   echo }^);
   echo.
   echo ipcMain.handle^('settings:resetAgent', async ^(_event, key^) =^> {
-  echo   if ^(!DEFAULT_SELECTORS[key]^) {
+  echo   if ^(^!DEFAULT_SELECTORS[key]^) {
   echo     return { ok: false, error: 'unknown' };
   echo   }
   echo   appState.selectors[key] = JSON.parse^(JSON.stringify^(DEFAULT_SELECTORS[key]^)^);
@@ -1510,7 +1510,7 @@ setlocal DisableDelayedExpansion
   echo }^);
   echo.
   echo app.on^('window-all-closed', ^(^) =^> {
-  echo   if ^(process.platform !== 'darwin'^) {
+  echo   if ^(process.platform ^!== 'darwin'^) {
   echo     app.quit^(^);
   echo   }
   echo }^);
@@ -1572,7 +1572,1805 @@ endlocal
 exit /b
 
 :write_renderer_js
-call :write_block "%~1" renderer_js
+setlocal DisableDelayedExpansion
+> "%~1" (
+  echo const api = window.omnichat;
+  echo.
+  echo const elements = {
+  echo   agentList: document.getElementById^('agentList'^),
+  echo   assistantSummary: document.getElementById^('assistantSummary'^),
+  echo   refreshAgents: document.getElementById^('refreshAgents'^),
+  echo   manageAssistants: document.getElementById^('manageAssistants'^),
+  echo   composerInput: document.getElementById^('composerInput'^),
+  echo   broadcastBtn: document.getElementById^('broadcastBtn'^),
+  echo   singleTarget: document.getElementById^('singleTarget'^),
+  echo   singleSendBtn: document.getElementById^('singleSendBtn'^),
+  echo   roundTurns: document.getElementById^('roundTurns'^),
+  echo   roundStart: document.getElementById^('roundStartBtn'^),
+  echo   roundPause: document.getElementById^('roundPauseBtn'^),
+  echo   roundResume: document.getElementById^('roundResumeBtn'^),
+  echo   roundStop: document.getElementById^('roundStopBtn'^),
+  echo   targetChips: document.getElementById^('targetChips'^),
+  echo   quoteBtn: document.getElementById^('quoteBtn'^),
+  echo   snapshotBtn: document.getElementById^('snapshotBtn'^),
+  echo   attachBtn: document.getElementById^('attachBtn'^),
+  echo   attachments: document.getElementById^('attachments'^),
+  echo   logView: document.getElementById^('logView'^),
+  echo   exportLogBtn: document.getElementById^('exportLogBtn'^),
+  echo   settingsModal: document.getElementById^('settingsModal'^),
+  echo   openSettings: document.getElementById^('openSettings'^),
+  echo   closeSettings: document.getElementById^('closeSettings'^),
+  echo   confirmModal: document.getElementById^('confirmModal'^),
+  echo   confirmMessage: document.getElementById^('confirmMessage'^),
+  echo   confirmCancel: document.getElementById^('confirmCancel'^),
+  echo   confirmOk: document.getElementById^('confirmOk'^),
+  echo   toast: document.getElementById^('toast'^),
+  echo   siteEditor: document.getElementById^('siteEditor'^),
+  echo   resetSiteForm: document.getElementById^('resetSiteForm'^),
+  echo   newSiteName: document.getElementById^('newSiteName'^),
+  echo   newSiteKey: document.getElementById^('newSiteKey'^),
+  echo   newSiteTemplate: document.getElementById^('newSiteTemplate'^),
+  echo   newSiteHome: document.getElementById^('newSiteHome'^),
+  echo   newSitePatterns: document.getElementById^('newSitePatterns'^),
+  echo   newSiteInput: document.getElementById^('newSiteInput'^),
+  echo   newSiteSend: document.getElementById^('newSiteSend'^),
+  echo   newSiteMessages: document.getElementById^('newSiteMessages'^),
+  echo   addSiteBtn: document.getElementById^('addSiteBtn'^),
+  echo   confirmToggle: document.getElementById^('confirmToggle'^),
+  echo   delayMin: document.getElementById^('delayMin'^),
+  echo   delayMax: document.getElementById^('delayMax'^),
+  echo   messageLimit: document.getElementById^('messageLimit'^),
+  echo   defaultTurns: document.getElementById^('defaultTurns'^),
+  echo   copilotHost: document.getElementById^('copilotHost'^),
+  echo   settingsComfyHost: document.getElementById^('settingsComfyHost'^),
+  echo   settingsComfyAuto: document.getElementById^('settingsComfyAuto'^),
+  echo   settingsOllamaHost: document.getElementById^('settingsOllamaHost'^),
+  echo   settingsOllamaModel: document.getElementById^('settingsOllamaModel'^),
+  echo   importSelectorsBtn: document.getElementById^('importSelectorsBtn'^),
+  echo   exportSelectorsBtn: document.getElementById^('exportSelectorsBtn'^),
+  echo   openConfigBtn: document.getElementById^('openConfigBtn'^),
+  echo   ollamaHostField: document.getElementById^('ollamaHostField'^),
+  echo   ollamaRefresh: document.getElementById^('ollamaRefresh'^),
+  echo   ollamaModelSelect: document.getElementById^('ollamaModelSelect'^),
+  echo   ollamaPrompt: document.getElementById^('ollamaPrompt'^),
+  echo   ollamaGenerate: document.getElementById^('ollamaGenerate'^),
+  echo   ollamaInsert: document.getElementById^('ollamaInsert'^),
+  echo   ollamaOutput: document.getElementById^('ollamaOutput'^),
+  echo   comfyHostField: document.getElementById^('comfyHostField'^),
+  echo   comfyRefresh: document.getElementById^('comfyRefresh'^),
+  echo   comfyRun: document.getElementById^('comfyRun'^),
+  echo   comfyStatus: document.getElementById^('comfyStatus'^),
+  echo   comfyGallery: document.getElementById^('comfyGallery'^)
+  echo };
+  echo.
+  echo const DEFAULT_KEY_FALLBACK = ['chatgpt', 'claude', 'copilot', 'gemini'];
+  echo const LOCAL_AGENT_KEY = 'local-ollama';
+  echo.
+  echo const state = {
+  echo   selectors: {},
+  echo   defaultSelectors: {},
+  echo   assistants: {},
+  echo   localManifest: null,
+  echo   settings: {},
+  echo   order: [],
+  echo   defaultKeys: [...DEFAULT_KEY_FALLBACK],
+  echo   selected: new Set^(^),
+  echo   agents: {},
+  echo   log: [],
+  echo   attachments: [],
+  echo   confirmResolver: null,
+  echo   local: {
+  echo     ollamaModels: [],
+  echo     ollamaOutput: '',
+  echo     ollamaBusy: false,
+  echo     comfyJobs: [],
+  echo     comfyBusy: false,
+  echo     comfyImported: new Set^(^)
+  echo   },
+  echo   round: {
+  echo     active: false,
+  echo     paused: false,
+  echo     queue: [],
+  echo     turnsRemaining: 0,
+  echo     baseMessage: '',
+  echo     lastTranscript: '',
+  echo     timer: null
+  echo   }
+  echo };
+  echo.
+  echo let settingsSaveTimer = null;
+  echo.
+  echo function isDefaultKey^(key^) {
+  echo   const defaults = state.defaultKeys ^&^& state.defaultKeys.length ? state.defaultKeys : DEFAULT_KEY_FALLBACK;
+  echo   return defaults.includes^(key^);
+  echo }
+  echo.
+  echo function getDefaultLocalManifest^(^) {
+  echo   return {
+  echo     key: LOCAL_AGENT_KEY,
+  echo     type: 'local',
+  echo     displayName: 'Local ^(Ollama^)',
+  echo     host: state.settings.ollamaHost ^|^| '',
+  echo     model: state.settings.ollamaModel ^|^| ''
+  echo   };
+  echo }
+  echo.
+  echo function syncAssistantManifest^(orderOverride^) {
+  echo   const manifest = {};
+  echo   Object.entries^(state.selectors ^|^| {}^).forEach^(^([key, config]^) =^> {
+  echo     manifest[key] = {
+  echo       key,
+  echo       type: 'web',
+  echo       displayName: config.displayName ^|^| key,
+  echo       home: config.home ^|^| '',
+  echo       patterns: config.patterns ^|^| []
+  echo     };
+  echo   }^);
+  echo   const local = state.localManifest ^|^| getDefaultLocalManifest^(^);
+  echo   const normalizedLocal = {
+  echo     ...local,
+  echo     host: state.settings.ollamaHost ^|^| local.host ^|^| '',
+  echo     model: state.settings.ollamaModel ^|^| local.model ^|^| ''
+  echo   };
+  echo   manifest[normalizedLocal.key] = { ...normalizedLocal };
+  echo   state.assistants = manifest;
+  echo   updateLocalManifest^(normalizedLocal, { skipSummary: true }^);
+  echo.
+  echo   const currentOrder = Array.isArray^(orderOverride^) ? orderOverride : state.order;
+  echo   const nextOrder = [];
+  echo   ^(currentOrder ^|^| []^).forEach^(^(key^) =^> {
+  echo     if ^(manifest[key] ^&^& ^!nextOrder.includes^(key^)^) {
+  echo       nextOrder.push^(key^);
+  echo     }
+  echo   }^);
+  echo   Object.keys^(manifest^).forEach^(^(key^) =^> {
+  echo     if ^(^!nextOrder.includes^(key^)^) {
+  echo       nextOrder.push^(key^);
+  echo     }
+  echo   }^);
+  echo   state.order = nextOrder;
+  echo.
+  echo   const previousSelection = new Set^(state.selected ^|^| []^);
+  echo   const nextSelection = new Set^(^);
+  echo   previousSelection.forEach^(^(key^) =^> {
+  echo     if ^(manifest[key]^) {
+  echo       nextSelection.add^(key^);
+  echo     }
+  echo   }^);
+  echo   if ^(^!nextSelection.size^) {
+  echo     nextOrder.forEach^(^(key^) =^> nextSelection.add^(key^)^);
+  echo   }
+  echo   state.selected = nextSelection;
+  echo   renderAssistantSummary^(^);
+  echo }
+  echo.
+  echo function renderAssistantSummary^(^) {
+  echo   if ^(^!elements.assistantSummary^) return;
+  echo   const assistants = Object.values^(state.assistants ^|^| {}^);
+  echo   const browserAssistants = assistants
+  echo     .filter^(^(item^) =^> item.type === 'web'^)
+  echo     .map^(^(item^) =^> item.displayName ^|^| item.key^);
+  echo   const local = assistants.find^(^(item^) =^> item.type === 'local'^);
+  echo   let hostLabel = '';
+  echo   if ^(local?.host^) {
+  echo     try {
+  echo       hostLabel = new URL^(local.host^).host ^|^| local.host;
+  echo     } catch ^(error^) {
+  echo       hostLabel = local.host;
+  echo     }
+  echo   }
+  echo   const browserInfo = browserAssistants.length
+  echo     ? `Browser: ${browserAssistants.join^(', '^)}`
+  echo     : 'Browser: none linked';
+  echo   const localInfo = local
+  echo     ? `Local: ${local.model ? local.model : 'model not selected'}${hostLabel ? ` @ ${hostLabel}` : ''}`
+  echo     : 'Local: unavailable';
+  echo   elements.assistantSummary.textContent = `${browserInfo} · ${localInfo}`;
+  echo }
+  echo.
+  echo function updateLocalManifest^(patch = {}, options = {}^) {
+  echo   const next = {
+  echo     ...^(state.localManifest ^|^| getDefaultLocalManifest^(^)^),
+  echo     ...patch
+  echo   };
+  echo   state.localManifest = next;
+  echo   if ^(^!state.assistants^) {
+  echo     state.assistants = {};
+  echo   }
+  echo   state.assistants[LOCAL_AGENT_KEY] = { ...next };
+  echo   if ^(^!options.skipSummary^) {
+  echo     renderAssistantSummary^(^);
+  echo   }
+  echo }
+  echo.
+  echo function scheduleSettingsSave^(^) {
+  echo   clearTimeout^(settingsSaveTimer^);
+  echo   settingsSaveTimer = setTimeout^(^(^) =^> {
+  echo     api.saveSettings^(state.settings^);
+  echo   }, 400^);
+  echo }
+  echo.
+  echo function appendLog^(entry^) {
+  echo   state.log.push^(entry^);
+  echo   if ^(state.log.length ^> 2000^) {
+  echo     state.log = state.log.slice^(-2000^);
+  echo   }
+  echo   renderLog^(^);
+  echo }
+  echo.
+  echo function renderLog^(^) {
+  echo   elements.logView.innerHTML = '';
+  echo   state.log.slice^(-400^).forEach^(^(line^) =^> {
+  echo     const div = document.createElement^('div'^);
+  echo     div.className = 'log-entry';
+  echo     div.textContent = line;
+  echo     elements.logView.appendChild^(div^);
+  echo   }^);
+  echo   elements.logView.scrollTop = elements.logView.scrollHeight;
+  echo }
+  echo.
+  echo function showToast^(message, timeout = 4000^) {
+  echo   elements.toast.textContent = message;
+  echo   elements.toast.classList.remove^('hidden'^);
+  echo   clearTimeout^(elements.toast._timer^);
+  echo   elements.toast._timer = setTimeout^(^(^) =^> {
+  echo     elements.toast.classList.add^('hidden'^);
+  echo   }, timeout^);
+  echo }
+  echo.
+  echo function confirmSend^(message^) {
+  echo   if ^(^!state.settings.confirmBeforeSend^) {
+  echo     return Promise.resolve^(true^);
+  echo   }
+  echo   elements.confirmMessage.textContent = message;
+  echo   elements.confirmModal.classList.remove^('hidden'^);
+  echo   return new Promise^(^(resolve^) =^> {
+  echo     state.confirmResolver = resolve;
+  echo   }^);
+  echo }
+  echo.
+  echo elements.confirmCancel.addEventListener^('click', ^(^) =^> {
+  echo   if ^(state.confirmResolver^) {
+  echo     state.confirmResolver^(false^);
+  echo     state.confirmResolver = null;
+  echo   }
+  echo   elements.confirmModal.classList.add^('hidden'^);
+  echo }^);
+  echo.
+  echo elements.confirmOk.addEventListener^('click', ^(^) =^> {
+  echo   if ^(state.confirmResolver^) {
+  echo     state.confirmResolver^(true^);
+  echo     state.confirmResolver = null;
+  echo   }
+  echo   elements.confirmModal.classList.add^('hidden'^);
+  echo }^);
+  echo.
+  echo function buildAgentOrderControls^(key^) {
+  echo   const container = document.createElement^('div'^);
+  echo   container.className = 'agent-order';
+  echo   const up = document.createElement^('button'^);
+  echo   up.textContent = '▲';
+  echo   up.addEventListener^('click', ^(^) =^> {
+  echo     const idx = state.order.indexOf^(key^);
+  echo     if ^(idx ^> 0^) {
+  echo       const swap = state.order[idx - 1];
+  echo       state.order[idx - 1] = key;
+  echo       state.order[idx] = swap;
+  echo       renderAgents^(^);
+  echo     }
+  echo   }^);
+  echo   const down = document.createElement^('button'^);
+  echo   down.textContent = '▼';
+  echo   down.addEventListener^('click', ^(^) =^> {
+  echo     const idx = state.order.indexOf^(key^);
+  echo     if ^(idx ^>= 0 ^&^& idx ^< state.order.length - 1^) {
+  echo       const swap = state.order[idx + 1];
+  echo       state.order[idx + 1] = key;
+  echo       state.order[idx] = swap;
+  echo       renderAgents^(^);
+  echo     }
+  echo   }^);
+  echo   const badge = document.createElement^('span'^);
+  echo   badge.className = 'round-badge';
+  echo   badge.textContent = `#${state.order.indexOf^(key^) + 1}`;
+  echo   container.appendChild^(up^);
+  echo   container.appendChild^(down^);
+  echo   container.appendChild^(badge^);
+  echo   return container;
+  echo }
+  echo.
+  echo function renderAgents^(^) {
+  echo   elements.agentList.innerHTML = '';
+  echo   state.order.forEach^(^(key^) =^> {
+  echo     const assistant = state.assistants[key];
+  echo     if ^(^!assistant^) return;
+  echo     const config = state.selectors[key];
+  echo     const item = document.createElement^('div'^);
+  echo     item.className = 'agent-item';
+  echo     if ^(assistant.type === 'local'^) {
+  echo       item.classList.add^('local'^);
+  echo     }
+  echo     if ^(state.selected.has^(key^)^) {
+  echo       item.classList.add^('active'^);
+  echo     }
+  echo.
+  echo     const top = document.createElement^('div'^);
+  echo     top.className = 'agent-top';
+  echo     const name = document.createElement^('div'^);
+  echo     const label = assistant.displayName ^|^| config?.displayName ^|^| key;
+  echo     name.innerHTML = `^<strong^>${label}^</strong^> ^<span class="badge"^>${key}^</span^>`;
+  echo.
+  echo     const toggle = document.createElement^('input'^);
+  echo     toggle.type = 'checkbox';
+  echo     toggle.checked = state.selected.has^(key^);
+  echo     toggle.addEventListener^('change', ^(^) =^> {
+  echo       if ^(toggle.checked^) {
+  echo         state.selected.add^(key^);
+  echo       } else {
+  echo         state.selected.delete^(key^);
+  echo       }
+  echo       renderAgents^(^);
+  echo     }^);
+  echo.
+  echo     top.appendChild^(name^);
+  echo     top.appendChild^(toggle^);
+  echo.
+  echo     const status = document.createElement^('div'^);
+  echo     status.className = 'agent-status';
+  echo     const data = state.agents[key];
+  echo     const statusBits = [];
+  echo     if ^(data ^&^& data.status^) {
+  echo       statusBits.push^(data.status^);
+  echo     }
+  echo     if ^(data ^&^& data.visible ^&^& assistant.type ^!== 'local'^) {
+  echo       statusBits.push^('visible'^);
+  echo     }
+  echo     if ^(data ^&^& data.error^) {
+  echo       statusBits.push^(`error: ${data.error}`^);
+  echo     }
+  echo     if ^(assistant.type === 'local'^) {
+  echo       const host = ^(data ^&^& data.host^) ^|^| state.settings.ollamaHost ^|^| '';
+  echo       const model = ^(data ^&^& data.model^) ^|^| state.settings.ollamaModel ^|^| '';
+  echo       statusBits.push^(model ? `model: ${model}` : 'model pending'^);
+  echo       if ^(host^) {
+  echo         try {
+  echo           const parsed = new URL^(host^);
+  echo           statusBits.push^(parsed.host ^|^| host^);
+  echo         } catch ^(error^) {
+  echo           statusBits.push^(host^);
+  echo         }
+  echo       } else {
+  echo         statusBits.push^('host offline'^);
+  echo       }
+  echo     } else if ^(data ^&^& data.url^) {
+  echo       try {
+  echo         const url = new URL^(data.url^);
+  echo         statusBits.push^(url.hostname^);
+  echo       } catch ^(error^) {
+  echo         statusBits.push^(data.url^);
+  echo       }
+  echo     }
+  echo     status.textContent = statusBits.join^(' · '^) ^|^| 'offline';
+  echo.
+  echo     const actions = document.createElement^('div'^);
+  echo     actions.className = 'agent-actions';
+  echo.
+  echo     if ^(assistant.type === 'local'^) {
+  echo       const studioBtn = document.createElement^('button'^);
+  echo       studioBtn.className = 'secondary';
+  echo       studioBtn.textContent = 'Focus Studio';
+  echo       studioBtn.addEventListener^('click', ^(^) =^> {
+  echo         document.getElementById^('ollamaHostField'^)?.scrollIntoView^({ behavior: 'smooth', block: 'center' }^);
+  echo         showToast^('Local Studio ready below.'^);
+  echo       }^);
+  echo       const refreshBtn = document.createElement^('button'^);
+  echo       refreshBtn.className = 'secondary';
+  echo       refreshBtn.textContent = 'Refresh models';
+  echo       refreshBtn.addEventListener^('click', ^(^) =^> refreshOllamaModels^(^)^);
+  echo       actions.appendChild^(studioBtn^);
+  echo       actions.appendChild^(refreshBtn^);
+  echo     } else {
+  echo       const connectBtn = document.createElement^('button'^);
+  echo       connectBtn.className = 'secondary';
+  echo       connectBtn.textContent = 'Connect';
+  echo       connectBtn.addEventListener^('click', async ^(^) =^> {
+  echo         await api.connectAgent^(key^);
+  echo       }^);
+  echo.
+  echo       const hideBtn = document.createElement^('button'^);
+  echo       hideBtn.className = 'secondary';
+  echo       hideBtn.textContent = 'Hide';
+  echo       hideBtn.addEventListener^('click', async ^(^) =^> {
+  echo         await api.hideAgent^(key^);
+  echo       }^);
+  echo.
+  echo       const readBtn = document.createElement^('button'^);
+  echo       readBtn.className = 'secondary';
+  echo       readBtn.textContent = 'Read';
+  echo       readBtn.addEventListener^('click', async ^(^) =^> {
+  echo         await ensureAgent^(key^);
+  echo         const messages = await api.readAgent^(key^);
+  echo         appendLog^(`${key}:\n${messages.join^('\n'^)}`^);
+  echo       }^);
+  echo.
+  echo       actions.appendChild^(connectBtn^);
+  echo       actions.appendChild^(hideBtn^);
+  echo       actions.appendChild^(readBtn^);
+  echo.
+  echo       if ^(^!isDefaultKey^(key^)^) {
+  echo         const removeBtn = document.createElement^('button'^);
+  echo         removeBtn.className = 'secondary';
+  echo         removeBtn.textContent = 'Remove';
+  echo         removeBtn.addEventListener^('click', ^(^) =^> {
+  echo           delete state.selectors[key];
+  echo           state.order = state.order.filter^(^(k^) =^> k ^!== key^);
+  echo           state.selected.delete^(key^);
+  echo           persistSelectors^(^);
+  echo           renderAgents^(^);
+  echo           renderSiteEditor^(^);
+  echo         }^);
+  echo         actions.appendChild^(removeBtn^);
+  echo       } else {
+  echo         const resetBtn = document.createElement^('button'^);
+  echo         resetBtn.className = 'secondary';
+  echo         resetBtn.textContent = 'Reset';
+  echo         resetBtn.addEventListener^('click', async ^(^) =^> {
+  echo           await api.resetAgentSelectors^(key^);
+  echo           await reloadSelectors^(^);
+  echo           renderSiteEditor^(^);
+  echo         }^);
+  echo         actions.appendChild^(resetBtn^);
+  echo       }
+  echo     }
+  echo.
+  echo     const orderControls = buildAgentOrderControls^(key^);
+  echo.
+  echo     item.appendChild^(top^);
+  echo     item.appendChild^(status^);
+  echo     item.appendChild^(actions^);
+  echo     item.appendChild^(orderControls^);
+  echo     elements.agentList.appendChild^(item^);
+  echo   }^);
+  echo   updateTargetControls^(^);
+  echo }
+  echo.
+  echo function renderTargetDropdown^(^) {
+  echo   const selected = Array.from^(state.order^).filter^(^(key^) =^> state.assistants[key]^);
+  echo   elements.singleTarget.innerHTML = '';
+  echo   selected.forEach^(^(key^) =^> {
+  echo     const option = document.createElement^('option'^);
+  echo     const assistant = state.assistants[key];
+  echo     option.value = key;
+  echo     option.textContent = assistant.displayName ^|^| key;
+  echo     elements.singleTarget.appendChild^(option^);
+  echo   }^);
+  echo   const firstSelected = Array.from^(state.selected^)[0];
+  echo   if ^(firstSelected ^&^& state.selectors[firstSelected]^) {
+  echo     elements.singleTarget.value = firstSelected;
+  echo   } else if ^(elements.singleTarget.options.length^) {
+  echo     elements.singleTarget.selectedIndex = 0;
+  echo   }
+  echo   elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
+  echo }
+  echo.
+  echo function renderTargetChips^(^) {
+  echo   if ^(^!elements.targetChips^) return;
+  echo   elements.targetChips.innerHTML = '';
+  echo   const fragment = document.createDocumentFragment^(^);
+  echo   let hasAny = false;
+  echo   state.order.forEach^(^(key^) =^> {
+  echo     if ^(^!state.assistants[key]^) return;
+  echo     hasAny = true;
+  echo     const assistant = state.assistants[key];
+  echo     const chip = document.createElement^('button'^);
+  echo     chip.type = 'button';
+  echo     chip.className = 'chip';
+  echo     chip.textContent = assistant.displayName ^|^| key;
+  echo     if ^(state.selected.has^(key^)^) {
+  echo       chip.classList.add^('active'^);
+  echo     }
+  echo     chip.addEventListener^('click', ^(^) =^> {
+  echo       if ^(state.selected.has^(key^)^) {
+  echo         state.selected.delete^(key^);
+  echo       } else {
+  echo         state.selected.add^(key^);
+  echo       }
+  echo       renderAgents^(^);
+  echo     }^);
+  echo     fragment.appendChild^(chip^);
+  echo   }^);
+  echo.
+  echo   if ^(^!hasAny^) {
+  echo     const empty = document.createElement^('span'^);
+  echo     empty.className = 'chip-empty';
+  echo     empty.textContent = 'No assistants available.';
+  echo     fragment.appendChild^(empty^);
+  echo   }
+  echo.
+  echo   elements.targetChips.appendChild^(fragment^);
+  echo }
+  echo.
+  echo function updateTargetControls^(^) {
+  echo   renderTargetDropdown^(^);
+  echo   renderTargetChips^(^);
+  echo }
+  echo.
+  echo function renderSiteEditor^(^) {
+  echo   elements.siteEditor.innerHTML = '';
+  echo   const orderedKeys = state.order.length
+  echo     ? state.order.filter^(^(key^) =^> state.selectors[key]^)
+  echo     : Object.keys^(state.selectors^);
+  echo   const extras = Object.keys^(state.selectors^).filter^(^(key^) =^> ^!orderedKeys.includes^(key^)^);
+  echo   const keys = [...orderedKeys, ...extras];
+  echo.
+  echo   keys.forEach^(^(key^) =^> {
+  echo     const config = state.selectors[key];
+  echo     if ^(^!config^) return;
+  echo     const row = document.createElement^('div'^);
+  echo     row.className = 'site-row';
+  echo     row.dataset.key = key;
+  echo     row.innerHTML = `
+  echo       ^<div class="agent-top"^>
+  echo         ^<strong^>${config.displayName ^|^| key}^</strong^>
+  echo         ^<span class="badge"^>${key}^</span^>
+  echo       ^</div^>
+  echo       ^<label^>Display name
+  echo         ^<input type="text" class="field-name" value="${config.displayName ^|^| ''}" /^>
+  echo       ^</label^>
+  echo       ^<label^>Home URL
+  echo         ^<input type="text" class="field-home" value="${config.home ^|^| ''}" /^>
+  echo       ^</label^>
+  echo       ^<label^>URL patterns ^(one per line^)
+  echo         ^<textarea class="field-patterns"^>${^(config.patterns ^|^| []^).join^('\n'^)}^</textarea^>
+  echo       ^</label^>
+  echo       ^<label^>Input selectors
+  echo         ^<textarea class="field-input"^>${^(config.input ^|^| []^).join^('\n'^)}^</textarea^>
+  echo       ^</label^>
+  echo       ^<label^>Send button selectors
+  echo         ^<textarea class="field-send"^>${^(config.sendButton ^|^| []^).join^('\n'^)}^</textarea^>
+  echo       ^</label^>
+  echo       ^<label^>Message container selectors
+  echo         ^<textarea class="field-message"^>${^(config.messageContainer ^|^| []^).join^('\n'^)}^</textarea^>
+  echo       ^</label^>
+  echo     `;
+  echo.
+  echo     const actions = document.createElement^('div'^);
+  echo     actions.className = 'site-actions';
+  echo.
+  echo     const saveBtn = document.createElement^('button'^);
+  echo     saveBtn.className = 'secondary';
+  echo     saveBtn.textContent = 'Save';
+  echo     saveBtn.addEventListener^('click', ^(^) =^> {
+  echo       persistSelectors^(^);
+  echo       showToast^(`${key} selectors saved.`^);
+  echo     }^);
+  echo.
+  echo     actions.appendChild^(saveBtn^);
+  echo.
+  echo     if ^(^!isDefaultKey^(key^)^) {
+  echo       const deleteBtn = document.createElement^('button'^);
+  echo       deleteBtn.className = 'secondary';
+  echo       deleteBtn.textContent = 'Delete';
+  echo       deleteBtn.addEventListener^('click', ^(^) =^> {
+  echo         delete state.selectors[key];
+  echo         state.order = state.order.filter^(^(k^) =^> k ^!== key^);
+  echo         persistSelectors^(^);
+  echo         renderSiteEditor^(^);
+  echo         renderAgents^(^);
+  echo       }^);
+  echo       actions.appendChild^(deleteBtn^);
+  echo     }
+  echo.
+  echo     row.appendChild^(actions^);
+  echo     elements.siteEditor.appendChild^(row^);
+  echo   }^);
+  echo   populateTemplateSelect^(^);
+  echo }
+  echo.
+  echo function slugifyKey^(value = ''^) {
+  echo   return value
+  echo     .toLowerCase^(^)
+  echo     .trim^(^)
+  echo     .replace^(/[^^a-z0-9]+/g, '-'^)
+  echo     .replace^(/^^-+^|-+$/g, ''^)
+  echo     .slice^(0, 48^);
+  echo }
+  echo.
+  echo function clearNewSiteForm^(^) {
+  echo   if ^(^!elements.newSiteName^) return;
+  echo   elements.newSiteName.value = '';
+  echo   if ^(elements.newSiteHome^) elements.newSiteHome.value = '';
+  echo   if ^(elements.newSitePatterns^) elements.newSitePatterns.value = '';
+  echo   if ^(elements.newSiteInput^) elements.newSiteInput.value = '';
+  echo   if ^(elements.newSiteSend^) elements.newSiteSend.value = '';
+  echo   if ^(elements.newSiteMessages^) elements.newSiteMessages.value = '';
+  echo   if ^(elements.newSiteTemplate^) elements.newSiteTemplate.value = '';
+  echo   if ^(elements.newSiteKey^) {
+  echo     elements.newSiteKey.value = '';
+  echo     delete elements.newSiteKey.dataset.manual;
+  echo   }
+  echo }
+  echo.
+  echo function populateTemplateSelect^(^) {
+  echo   if ^(^!elements.newSiteTemplate^) return;
+  echo   const currentValue = elements.newSiteTemplate.value;
+  echo   elements.newSiteTemplate.innerHTML = '';
+  echo   const placeholder = document.createElement^('option'^);
+  echo   placeholder.value = '';
+  echo   placeholder.textContent = 'Choose template…';
+  echo   elements.newSiteTemplate.appendChild^(placeholder^);
+  echo.
+  echo   const seen = new Set^(^);
+  echo   const addOption = ^(value, label^) =^> {
+  echo     if ^(^!value ^|^| seen.has^(value^)^) return;
+  echo     seen.add^(value^);
+  echo     const option = document.createElement^('option'^);
+  echo     option.value = value;
+  echo     option.textContent = label;
+  echo     elements.newSiteTemplate.appendChild^(option^);
+  echo   };
+  echo.
+  echo   Object.entries^(state.defaultSelectors ^|^| {}^).forEach^(^([key, config]^) =^> {
+  echo     addOption^(`default:${key}`, `${config.displayName ^|^| key} ^(default^)`^);
+  echo   }^);
+  echo   Object.entries^(state.selectors ^|^| {}^).forEach^(^([key, config]^) =^> {
+  echo     addOption^(`current:${key}`, `${config.displayName ^|^| key} ^(current^)`^);
+  echo   }^);
+  echo.
+  echo   if ^(currentValue ^&^& seen.has^(currentValue^)^) {
+  echo     elements.newSiteTemplate.value = currentValue;
+  echo   }
+  echo }
+  echo.
+  echo function applyTemplateSelection^(value^) {
+  echo   if ^(^!value ^|^| ^!elements.newSiteKey^) return;
+  echo   const [scope, key] = value.split^(':'^);
+  echo   if ^(^!key^) return;
+  echo   let template = null;
+  echo   if ^(scope === 'default'^) {
+  echo     template = state.defaultSelectors?.[key] ^|^| null;
+  echo   } else if ^(scope === 'current'^) {
+  echo     template = state.selectors?.[key] ^|^| null;
+  echo   }
+  echo   if ^(^!template^) return;
+  echo   const displayName = template.displayName ^|^| key;
+  echo   if ^(^!elements.newSiteName.value.trim^(^)^) {
+  echo     elements.newSiteName.value = displayName;
+  echo   }
+  echo   if ^(^!elements.newSiteKey.dataset.manual ^|^| ^!elements.newSiteKey.value.trim^(^)^) {
+  echo     elements.newSiteKey.value = slugifyKey^(elements.newSiteName.value ^|^| displayName^);
+  echo   }
+  echo   elements.newSiteHome.value = template.home ^|^| '';
+  echo   elements.newSitePatterns.value = ^(template.patterns ^|^| []^).join^('\n'^);
+  echo   elements.newSiteInput.value = ^(template.input ^|^| []^).join^('\n'^);
+  echo   elements.newSiteSend.value = ^(template.sendButton ^|^| []^).join^('\n'^);
+  echo   elements.newSiteMessages.value = ^(template.messageContainer ^|^| []^).join^('\n'^);
+  echo }
+  echo.
+  echo function collectNewSiteForm^(^) {
+  echo   if ^(^!elements.newSiteName^) return null;
+  echo   const name = elements.newSiteName.value.trim^(^);
+  echo   let key = elements.newSiteKey.value.trim^(^).toLowerCase^(^);
+  echo   if ^(^!key^) {
+  echo     key = slugifyKey^(name^);
+  echo     elements.newSiteKey.value = key;
+  echo   }
+  echo   if ^(^!key^) {
+  echo     showToast^('Enter an assistant key.'^);
+  echo     return null;
+  echo   }
+  echo   if ^(^!/^^[a-z0-9\-]+$/.test^(key^)^) {
+  echo     showToast^('Key must use letters, numbers, or hyphen.'^);
+  echo     return null;
+  echo   }
+  echo   if ^(state.selectors[key]^) {
+  echo     showToast^('That key already exists.'^);
+  echo     return null;
+  echo   }
+  echo   const homeField = elements.newSiteHome;
+  echo   const patternField = elements.newSitePatterns;
+  echo   const inputField = elements.newSiteInput;
+  echo   const sendField = elements.newSiteSend;
+  echo   const messageField = elements.newSiteMessages;
+  echo   const home = homeField ? homeField.value.trim^(^) : '';
+  echo   const patterns = ^(patternField ? patternField.value : ''^)
+  echo     .split^(/\r?\n/^)
+  echo     .map^(^(line^) =^> line.trim^(^)^)
+  echo     .filter^(Boolean^);
+  echo   const input = ^(inputField ? inputField.value : ''^)
+  echo     .split^(/\r?\n/^)
+  echo     .map^(^(line^) =^> line.trim^(^)^)
+  echo     .filter^(Boolean^);
+  echo   const sendButton = ^(sendField ? sendField.value : ''^)
+  echo     .split^(/\r?\n/^)
+  echo     .map^(^(line^) =^> line.trim^(^)^)
+  echo     .filter^(Boolean^);
+  echo   const messageContainer = ^(messageField ? messageField.value : ''^)
+  echo     .split^(/\r?\n/^)
+  echo     .map^(^(line^) =^> line.trim^(^)^)
+  echo     .filter^(Boolean^);
+  echo.
+  echo   if ^(^!patterns.length ^&^& home^) {
+  echo     patterns.push^(home^);
+  echo   }
+  echo   if ^(^!patterns.length^) {
+  echo     showToast^('Provide at least one URL pattern.'^);
+  echo     return null;
+  echo   }
+  echo   if ^(^!input.length^) {
+  echo     showToast^('Provide at least one input selector.'^);
+  echo     return null;
+  echo   }
+  echo   if ^(^!sendButton.length^) {
+  echo     showToast^('Provide at least one send button selector.'^);
+  echo     return null;
+  echo   }
+  echo   if ^(^!messageContainer.length^) {
+  echo     showToast^('Provide at least one message container selector.'^);
+  echo     return null;
+  echo   }
+  echo.
+  echo   const config = {
+  echo     displayName: name ^|^| key,
+  echo     home,
+  echo     patterns,
+  echo     input,
+  echo     sendButton,
+  echo     messageContainer
+  echo   };
+  echo.
+  echo   return { key, config };
+  echo }
+  echo.
+  echo function collectSelectorsFromEditor^(^) {
+  echo   const rows = elements.siteEditor.querySelectorAll^('.site-row'^);
+  echo   const next = {};
+  echo   rows.forEach^(^(row^) =^> {
+  echo     const key = row.dataset.key.trim^(^);
+  echo     const displayName = row.querySelector^('.field-name'^).value.trim^(^) ^|^| key;
+  echo     const home = row.querySelector^('.field-home'^).value.trim^(^);
+  echo     const patterns = row
+  echo       .querySelector^('.field-patterns'^)
+  echo       .value.split^(/\r?\n/^)
+  echo       .map^(^(s^) =^> s.trim^(^)^)
+  echo       .filter^(Boolean^);
+  echo     const input = row
+  echo       .querySelector^('.field-input'^)
+  echo       .value.split^(/\r?\n/^)
+  echo       .map^(^(s^) =^> s.trim^(^)^)
+  echo       .filter^(Boolean^);
+  echo     const sendButton = row
+  echo       .querySelector^('.field-send'^)
+  echo       .value.split^(/\r?\n/^)
+  echo       .map^(^(s^) =^> s.trim^(^)^)
+  echo       .filter^(Boolean^);
+  echo     const messageContainer = row
+  echo       .querySelector^('.field-message'^)
+  echo       .value.split^(/\r?\n/^)
+  echo       .map^(^(s^) =^> s.trim^(^)^)
+  echo       .filter^(Boolean^);
+  echo     next[key] = {
+  echo       displayName,
+  echo       home,
+  echo       patterns: patterns.length ? patterns : home ? [home] : [],
+  echo       input,
+  echo       sendButton,
+  echo       messageContainer
+  echo     };
+  echo   }^);
+  echo   return next;
+  echo }
+  echo.
+  echo async function persistSelectors^(^) {
+  echo   const next = collectSelectorsFromEditor^(^);
+  echo   state.selectors = next;
+  echo   await api.saveSelectors^(next^);
+  echo   syncAssistantManifest^(^);
+  echo   renderAgents^(^);
+  echo }
+  echo.
+  echo function collectSettingsFromModal^(^) {
+  echo   return {
+  echo     confirmBeforeSend: elements.confirmToggle.checked,
+  echo     delayMin: Number^(elements.delayMin.value^) ^|^| 0,
+  echo     delayMax: Number^(elements.delayMax.value^) ^|^| 0,
+  echo     messageLimit: Number^(elements.messageLimit.value^) ^|^| 1,
+  echo     roundTableTurns: Number^(elements.defaultTurns.value^) ^|^| 1,
+  echo     copilotHost: elements.copilotHost.value.trim^(^),
+  echo     comfyHost: elements.settingsComfyHost.value.trim^(^),
+  echo     comfyAutoImport: elements.settingsComfyAuto.checked,
+  echo     ollamaHost: elements.settingsOllamaHost.value.trim^(^),
+  echo     ollamaModel: elements.settingsOllamaModel.value.trim^(^)
+  echo   };
+  echo }
+  echo.
+  echo async function persistSettings^(^) {
+  echo   const next = collectSettingsFromModal^(^);
+  echo   const previousOllamaHost = state.settings.ollamaHost;
+  echo   const previousComfyHost = state.settings.comfyHost;
+  echo   const previousComfyAuto = state.settings.comfyAutoImport;
+  echo   state.settings = { ...state.settings, ...next };
+  echo   await api.saveSettings^(state.settings^);
+  echo   updateLocalManifest^({
+  echo     host: state.settings.ollamaHost ^|^| '',
+  echo     model: state.settings.ollamaModel ^|^| state.localManifest?.model ^|^| ''
+  echo   }^);
+  echo   elements.roundTurns.value = state.settings.roundTableTurns;
+  echo   syncStudioHosts^(^);
+  echo   if ^(next.ollamaHost ^!== previousOllamaHost^) {
+  echo     state.local.ollamaOutput = '';
+  echo     renderOllamaOutput^(^);
+  echo     refreshOllamaModels^({ silent: true }^);
+  echo   }
+  echo   if ^(next.comfyHost ^!== previousComfyHost^) {
+  echo     state.local.comfyImported = new Set^(^);
+  echo     refreshComfyHistory^({ silent: true }^);
+  echo   }
+  echo   if ^(^!previousComfyAuto ^&^& state.settings.comfyAutoImport^) {
+  echo     autoImportComfyResult^(^);
+  echo   }
+  echo }
+  echo.
+  echo function openSettingsModal^(^) {
+  echo   renderSiteEditor^(^);
+  echo   hydrateSettings^(^);
+  echo   elements.settingsModal.classList.remove^('hidden'^);
+  echo   document.body.classList.add^('modal-open'^);
+  echo }
+  echo.
+  echo async function closeSettingsModal^(save = true^) {
+  echo   if ^(save^) {
+  echo     await persistSelectors^(^);
+  echo     await persistSettings^(^);
+  echo     showToast^('Settings saved.'^);
+  echo   } else {
+  echo     renderSiteEditor^(^);
+  echo     hydrateSettings^(^);
+  echo   }
+  echo   elements.settingsModal.classList.add^('hidden'^);
+  echo   document.body.classList.remove^('modal-open'^);
+  echo }
+  echo.
+  echo elements.openSettings.addEventListener^('click', ^(^) =^> {
+  echo   openSettingsModal^(^);
+  echo }^);
+  echo.
+  echo if ^(elements.manageAssistants^) {
+  echo   elements.manageAssistants.addEventListener^('click', ^(^) =^> {
+  echo     openSettingsModal^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo elements.closeSettings.addEventListener^('click', async ^(^) =^> {
+  echo   await closeSettingsModal^(true^);
+  echo }^);
+  echo.
+  echo elements.settingsModal.addEventListener^('click', async ^(event^) =^> {
+  echo   if ^(event.target === elements.settingsModal^) {
+  echo     await closeSettingsModal^(false^);
+  echo   }
+  echo }^);
+  echo.
+  echo document.addEventListener^('keydown', async ^(event^) =^> {
+  echo   if ^(event.key === 'Escape' ^&^& ^!elements.settingsModal.classList.contains^('hidden'^)^) {
+  echo     await closeSettingsModal^(false^);
+  echo   }
+  echo }^);
+  echo.
+  echo if ^(elements.addSiteBtn^) {
+  echo   elements.addSiteBtn.addEventListener^('click', async ^(^) =^> {
+  echo     const entry = collectNewSiteForm^(^);
+  echo     if ^(^!entry^) {
+  echo       return;
+  echo     }
+  echo     const { key, config } = entry;
+  echo     state.selectors[key] = config;
+  echo     if ^(^!state.order.includes^(key^)^) {
+  echo       state.order.push^(key^);
+  echo     }
+  echo     state.selected.add^(key^);
+  echo     await api.saveSelectors^(state.selectors^);
+  echo     syncAssistantManifest^(^);
+  echo     renderAgents^(^);
+  echo     renderSiteEditor^(^);
+  echo     showToast^(`${config.displayName ^|^| key} added.`^);
+  echo     clearNewSiteForm^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.resetSiteForm^) {
+  echo   elements.resetSiteForm.addEventListener^('click', ^(^) =^> {
+  echo     clearNewSiteForm^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.newSiteTemplate^) {
+  echo   elements.newSiteTemplate.addEventListener^('change', ^(^) =^> {
+  echo     applyTemplateSelection^(elements.newSiteTemplate.value^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.newSiteName ^&^& elements.newSiteKey^) {
+  echo   elements.newSiteName.addEventListener^('input', ^(^) =^> {
+  echo     if ^(^!elements.newSiteKey.dataset.manual^) {
+  echo       elements.newSiteKey.value = slugifyKey^(elements.newSiteName.value^);
+  echo     }
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.newSiteKey^) {
+  echo   elements.newSiteKey.addEventListener^('input', ^(^) =^> {
+  echo     if ^(elements.newSiteKey.value.trim^(^)^) {
+  echo       elements.newSiteKey.dataset.manual = '1';
+  echo     } else {
+  echo       delete elements.newSiteKey.dataset.manual;
+  echo       if ^(elements.newSiteName ^&^& elements.newSiteName.value.trim^(^)^) {
+  echo         elements.newSiteKey.value = slugifyKey^(elements.newSiteName.value^);
+  echo       }
+  echo     }
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.importSelectorsBtn^) {
+  echo   elements.importSelectorsBtn.addEventListener^('click', async ^(^) =^> {
+  echo     const result = await api.importSelectors^(^);
+  echo     if ^(result ^&^& result.ok^) {
+  echo       state.selectors = result.selectors ^|^| state.selectors;
+  echo       state.order = Object.keys^(state.selectors^);
+  echo       syncAssistantManifest^(^);
+  echo       renderAgents^(^);
+  echo       renderSiteEditor^(^);
+  echo       clearNewSiteForm^(^);
+  echo       showToast^('selectors.json imported.'^);
+  echo     } else if ^(result ^&^& result.error^) {
+  echo       showToast^(`Import failed: ${result.error}`^);
+  echo     }
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.exportSelectorsBtn^) {
+  echo   elements.exportSelectorsBtn.addEventListener^('click', async ^(^) =^> {
+  echo     const result = await api.exportSelectors^(^);
+  echo     if ^(result ^&^& result.ok^) {
+  echo       showToast^(`selectors.json exported to ${result.path}`^);
+  echo     } else if ^(result ^&^& result.error^) {
+  echo       showToast^(`Export failed: ${result.error}`^);
+  echo     }
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.openConfigBtn^) {
+  echo   elements.openConfigBtn.addEventListener^('click', async ^(^) =^> {
+  echo     await api.openConfigFolder^(^);
+  echo     showToast^('Config folder opened in Explorer.'^);
+  echo   }^);
+  echo }
+  echo.
+  echo async function ensureAgent^(key^) {
+  echo   try {
+  echo     const status = await api.ensureAgent^(key^);
+  echo     if ^(status^) {
+  echo       state.agents[key] = { ...state.agents[key], ...status };
+  echo       renderAgents^(^);
+  echo     }
+  echo   } catch ^(error^) {
+  echo     showToast^(`${key}: unable to reach agent window.`^);
+  echo   }
+  echo }
+  echo.
+  echo async function sendToAgents^(targets, message, modeLabel^) {
+  echo   if ^(^!message^) {
+  echo     showToast^('Composer is empty.'^);
+  echo     return;
+  echo   }
+  echo   if ^(^!targets.length^) {
+  echo     showToast^('Select at least one assistant.'^);
+  echo     return;
+  echo   }
+  echo   if ^(state.settings.confirmBeforeSend^) {
+  echo     const ok = await confirmSend^(`Confirm ${modeLabel} to ${targets.length} assistant^(s^)?`^);
+  echo     if ^(^!ok^) {
+  echo       return;
+  echo     }
+  echo   }
+  echo   for ^(const key of targets^) {
+  echo     await ensureAgent^(key^);
+  echo     try {
+  echo       await api.sendAgent^({ key, text: buildMessageWithAttachments^(message^) }^);
+  echo       appendLog^(`${key}: message queued.`^);
+  echo     } catch ^(error^) {
+  echo       appendLog^(`${key}: send error ${error.message ^|^| error}`^);
+  echo       showToast^(`${key}: failed to send. Check selectors.`^);
+  echo     }
+  echo   }
+  echo }
+  echo.
+  echo function buildMessageWithAttachments^(base^) {
+  echo   if ^(^!state.attachments.length^) return base;
+  echo   const parts = [base];
+  echo   state.attachments.forEach^(^(attachment, index^) =^> {
+  echo     if ^(attachment.type === 'text'^) {
+  echo       parts.push^(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`^);
+  echo     } else {
+  echo       const meta = attachment.meta ? `\n${attachment.meta}` : '';
+  echo       parts.push^(`\n\n[Attachment ${index + 1}] ${attachment.title}${meta}\n^(${attachment.type ^|^| 'asset'} attached in OmniChat^)`^);
+  echo     }
+  echo   }^);
+  echo   return parts.join^(''^);
+  echo }
+  echo.
+  echo elements.broadcastBtn.addEventListener^('click', async ^(^) =^> {
+  echo   const targets = Array.from^(state.selected^);
+  echo   const message = elements.composerInput.value.trim^(^);
+  echo   await sendToAgents^(targets, message, 'broadcast'^);
+  echo }^);
+  echo.
+  echo elements.singleSendBtn.addEventListener^('click', async ^(^) =^> {
+  echo   const key = elements.singleTarget.value;
+  echo   const message = elements.composerInput.value.trim^(^);
+  echo   if ^(^!key^) {
+  echo     showToast^('Choose a target.'^);
+  echo     return;
+  echo   }
+  echo   await sendToAgents^([key], message, `send to ${key}`^);
+  echo }^);
+  echo.
+  echo function getPrimaryAgentKey^(^) {
+  echo   if ^(state.selected.size ^> 0^) {
+  echo     return Array.from^(state.selected^)[0];
+  echo   }
+  echo   const keys = state.order.filter^(^(key^) =^> state.assistants[key]^);
+  echo   return keys[0];
+  echo }
+  echo.
+  echo elements.quoteBtn.addEventListener^('click', async ^(^) =^> {
+  echo   const key = getPrimaryAgentKey^(^);
+  echo   if ^(^!key^) {
+  echo     showToast^('No assistants available.'^);
+  echo     return;
+  echo   }
+  echo   await ensureAgent^(key^);
+  echo   const result = await api.captureSelection^(key^);
+  echo   if ^(^!result ^|^| ^!result.ok ^|^| ^!result.selection^) {
+  echo     showToast^('No selection captured.'^);
+  echo     return;
+  echo   }
+  echo   pushAttachment^({
+  echo     title: `Quote from ${result.title ^|^| key}`,
+  echo     meta: result.url ^|^| '',
+  echo     body: result.selection
+  echo   }^);
+  echo }^);
+  echo.
+  echo elements.snapshotBtn.addEventListener^('click', async ^(^) =^> {
+  echo   const key = getPrimaryAgentKey^(^);
+  echo   if ^(^!key^) {
+  echo     showToast^('No assistants available.'^);
+  echo     return;
+  echo   }
+  echo   await ensureAgent^(key^);
+  echo   const result = await api.snapshotPage^({ key, limit: 2000 }^);
+  echo   if ^(^!result ^|^| ^!result.ok^) {
+  echo     showToast^('Snapshot failed.'^);
+  echo     return;
+  echo   }
+  echo   pushAttachment^({
+  echo     title: `Snapshot: ${result.title ^|^| key}`,
+  echo     meta: result.url ^|^| '',
+  echo     body: result.content ^|^| ''
+  echo   }^);
+  echo }^);
+  echo.
+  echo elements.attachBtn.addEventListener^('click', ^(^) =^> {
+  echo   const text = prompt^('Paste text to attach.'^);
+  echo   if ^(^!text^) {
+  echo     return;
+  echo   }
+  echo   const chunks = text.match^(/.{1,1800}/gs^) ^|^| [];
+  echo   chunks.forEach^(^(chunk, index^) =^> {
+  echo     pushAttachment^({
+  echo       title: index === 0 ? 'Snippet' : `Snippet part ${index + 1}`,
+  echo       meta: `Length ${chunk.length} characters`,
+  echo       body: chunk
+  echo     }^);
+  echo   }^);
+  echo }^);
+  echo.
+  echo if ^(elements.ollamaRefresh^) {
+  echo   elements.ollamaRefresh.addEventListener^('click', ^(^) =^> {
+  echo     refreshOllamaModels^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.ollamaGenerate^) {
+  echo   elements.ollamaGenerate.addEventListener^('click', ^(^) =^> {
+  echo     runOllamaGeneration^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.ollamaInsert^) {
+  echo   elements.ollamaInsert.addEventListener^('click', ^(^) =^> {
+  echo     if ^(^!state.local.ollamaOutput^) {
+  echo       showToast^('Generate with Ollama first.'^);
+  echo       return;
+  echo     }
+  echo     const existing = elements.composerInput.value.trim^(^);
+  echo     const snippet = `Ollama ^(${state.settings.ollamaModel ^|^| 'model'}^):\n${state.local.ollamaOutput}`;
+  echo     elements.composerInput.value = existing ? `${existing}\n\n${snippet}` : snippet;
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.ollamaModelSelect^) {
+  echo   elements.ollamaModelSelect.addEventListener^('change', ^(^) =^> {
+  echo     const value = elements.ollamaModelSelect.value;
+  echo     state.settings.ollamaModel = value;
+  echo     scheduleSettingsSave^(^);
+  echo     updateLocalManifest^({ model: value }^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.ollamaHostField^) {
+  echo   elements.ollamaHostField.addEventListener^('change', ^(^) =^> {
+  echo     state.settings.ollamaHost = elements.ollamaHostField.value.trim^(^);
+  echo     scheduleSettingsSave^(^);
+  echo     updateLocalManifest^({ host: state.settings.ollamaHost }^);
+  echo     state.local.ollamaOutput = '';
+  echo     renderOllamaOutput^(^);
+  echo     refreshOllamaModels^({ silent: true }^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.comfyHostField^) {
+  echo   elements.comfyHostField.addEventListener^('change', ^(^) =^> {
+  echo     state.settings.comfyHost = elements.comfyHostField.value.trim^(^);
+  echo     scheduleSettingsSave^(^);
+  echo     state.local.comfyImported = new Set^(^);
+  echo     refreshComfyHistory^({ silent: true }^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.comfyRefresh^) {
+  echo   elements.comfyRefresh.addEventListener^('click', ^(^) =^> {
+  echo     refreshComfyHistory^(^);
+  echo   }^);
+  echo }
+  echo.
+  echo if ^(elements.comfyRun^) {
+  echo   elements.comfyRun.addEventListener^('click', async ^(^) =^> {
+  echo     try {
+  echo       setComfyBusy^(true^);
+  echo       const host = elements.comfyHostField.value.trim^(^);
+  echo       state.settings.comfyHost = host;
+  echo       scheduleSettingsSave^(^);
+  echo       const result = await api.runComfyWorkflow^(host ^|^| undefined^);
+  echo       if ^(^!result ^|^| ^!result.ok^) {
+  echo         if ^(result?.canceled^) {
+  echo           renderComfyStatus^('Workflow selection canceled.'^);
+  echo           return;
+  echo         }
+  echo         throw new Error^(result?.error ^|^| 'Workflow launch failed.'^);
+  echo       }
+  echo       renderComfyStatus^('Workflow queued. Waiting for results…'^);
+  echo       showToast^('ComfyUI workflow submitted.'^);
+  echo       setTimeout^(^(^) =^> refreshComfyHistory^({ silent: true }^), 3000^);
+  echo     } catch ^(error^) {
+  echo       renderComfyStatus^(error.message ^|^| 'Workflow launch failed.', true^);
+  echo       showToast^(`ComfyUI: ${error.message}`^);
+  echo     } finally {
+  echo       setComfyBusy^(false^);
+  echo     }
+  echo   }^);
+  echo }
+  echo.
+  echo function pushAttachment^(attachment^) {
+  echo   state.attachments.push^({ type: 'text', ...attachment }^);
+  echo   renderAttachments^(^);
+  echo }
+  echo.
+  echo function renderAttachments^(^) {
+  echo   elements.attachments.innerHTML = '';
+  echo   if ^(^!state.attachments.length^) {
+  echo     elements.attachments.textContent = 'No attachments yet.';
+  echo     return;
+  echo   }
+  echo   state.attachments.forEach^(^(attachment, index^) =^> {
+  echo     const div = document.createElement^('div'^);
+  echo     div.className = 'attachment';
+  echo     const title = document.createElement^('div'^);
+  echo     title.className = 'attachment-title';
+  echo     title.textContent = `${index + 1}. ${attachment.title}`;
+  echo     const meta = document.createElement^('div'^);
+  echo     meta.className = 'attachment-meta';
+  echo     meta.textContent = attachment.meta;
+  echo     const body = document.createElement^('div'^);
+  echo     body.className = 'attachment-body';
+  echo     if ^(attachment.type === 'text'^) {
+  echo       body.textContent = attachment.body;
+  echo     } else {
+  echo       body.textContent = attachment.body ^|^| `${attachment.type} attachment`;
+  echo     }
+  echo     const actions = document.createElement^('div'^);
+  echo     actions.className = 'site-actions';
+  echo     const insertBtn = document.createElement^('button'^);
+  echo     insertBtn.className = 'secondary';
+  echo     insertBtn.textContent = 'Insert into composer';
+  echo     insertBtn.addEventListener^('click', ^(^) =^> {
+  echo       const chunk = attachment.type === 'text'
+  echo         ? attachment.body
+  echo         : `${attachment.title}\n${attachment.meta ^|^| ''}`.trim^(^);
+  echo       elements.composerInput.value = `${elements.composerInput.value}\n\n${chunk}`.trim^(^);
+  echo     }^);
+  echo     const removeBtn = document.createElement^('button'^);
+  echo     removeBtn.className = 'secondary';
+  echo     removeBtn.textContent = 'Remove';
+  echo     removeBtn.addEventListener^('click', ^(^) =^> {
+  echo       state.attachments.splice^(index, 1^);
+  echo       if ^(attachment.assetKey ^&^& state.local.comfyImported?.has^(attachment.assetKey^)^) {
+  echo         state.local.comfyImported.delete^(attachment.assetKey^);
+  echo       }
+  echo       renderAttachments^(^);
+  echo     }^);
+  echo     actions.appendChild^(insertBtn^);
+  echo     actions.appendChild^(removeBtn^);
+  echo     let mediaWrapper = null;
+  echo     if ^(attachment.dataUrl^) {
+  echo       const media = document.createElement^(attachment.type === 'video' ? 'video' : 'img'^);
+  echo       media.src = attachment.dataUrl;
+  echo       media.className = 'attachment-media-item';
+  echo       if ^(attachment.type === 'video'^) {
+  echo         media.controls = true;
+  echo       }
+  echo       mediaWrapper = document.createElement^('div'^);
+  echo       mediaWrapper.className = 'attachment-media';
+  echo       mediaWrapper.appendChild^(media^);
+  echo     }
+  echo     div.appendChild^(title^);
+  echo     div.appendChild^(meta^);
+  echo     div.appendChild^(body^);
+  echo     if ^(mediaWrapper^) {
+  echo       div.appendChild^(mediaWrapper^);
+  echo     }
+  echo     div.appendChild^(actions^);
+  echo     elements.attachments.appendChild^(div^);
+  echo   }^);
+  echo }
+  echo.
+  echo function syncStudioHosts^(^) {
+  echo   if ^(elements.ollamaHostField^) {
+  echo     elements.ollamaHostField.value = state.settings.ollamaHost ^|^| elements.ollamaHostField.placeholder ^|^| '';
+  echo   }
+  echo   if ^(elements.comfyHostField^) {
+  echo     elements.comfyHostField.value = state.settings.comfyHost ^|^| elements.comfyHostField.placeholder ^|^| '';
+  echo   }
+  echo   updateLocalManifest^(
+  echo     {
+  echo       host: state.settings.ollamaHost ^|^| state.localManifest?.host ^|^| '',
+  echo       model: state.settings.ollamaModel ^|^| state.localManifest?.model ^|^| ''
+  echo     },
+  echo     { skipSummary: true }
+  echo   ^);
+  echo   renderOllamaModels^(^);
+  echo   renderOllamaOutput^(^);
+  echo   renderComfyGallery^(^);
+  echo   renderAssistantSummary^(^);
+  echo }
+  echo.
+  echo function renderOllamaModels^(^) {
+  echo   if ^(^!elements.ollamaModelSelect^) return;
+  echo   elements.ollamaModelSelect.innerHTML = '';
+  echo   if ^(^!state.local.ollamaModels.length^) {
+  echo     const option = document.createElement^('option'^);
+  echo     option.value = '';
+  echo     option.textContent = 'No models detected';
+  echo     elements.ollamaModelSelect.appendChild^(option^);
+  echo     elements.ollamaModelSelect.disabled = true;
+  echo     if ^(state.settings.ollamaModel^) {
+  echo       state.settings.ollamaModel = '';
+  echo       scheduleSettingsSave^(^);
+  echo     }
+  echo     return;
+  echo   }
+  echo   elements.ollamaModelSelect.disabled = false;
+  echo   state.local.ollamaModels.forEach^(^(model^) =^> {
+  echo     const option = document.createElement^('option'^);
+  echo     option.value = model;
+  echo     option.textContent = model;
+  echo     elements.ollamaModelSelect.appendChild^(option^);
+  echo   }^);
+  echo   const preferred = state.settings.ollamaModel;
+  echo   if ^(preferred ^&^& state.local.ollamaModels.includes^(preferred^)^) {
+  echo     elements.ollamaModelSelect.value = preferred;
+  echo   } else {
+  echo     elements.ollamaModelSelect.selectedIndex = 0;
+  echo     state.settings.ollamaModel = elements.ollamaModelSelect.value;
+  echo     scheduleSettingsSave^(^);
+  echo   }
+  echo }
+  echo.
+  echo function renderOllamaOutput^(^) {
+  echo   if ^(^!elements.ollamaOutput^) return;
+  echo   elements.ollamaOutput.textContent = state.local.ollamaOutput ^|^| 'Generated text will appear here.';
+  echo }
+  echo.
+  echo function setOllamaBusy^(isBusy^) {
+  echo   state.local.ollamaBusy = isBusy;
+  echo   if ^(elements.ollamaGenerate^) {
+  echo     elements.ollamaGenerate.disabled = isBusy;
+  echo   }
+  echo   if ^(elements.ollamaRefresh^) {
+  echo     elements.ollamaRefresh.disabled = isBusy;
+  echo   }
+  echo }
+  echo.
+  echo async function refreshOllamaModels^({ silent = false } = {}^) {
+  echo   if ^(^!elements.ollamaHostField^) return;
+  echo   try {
+  echo     setOllamaBusy^(true^);
+  echo     const host = elements.ollamaHostField.value.trim^(^);
+  echo     state.settings.ollamaHost = host;
+  echo     scheduleSettingsSave^(^);
+  echo     const result = await api.listOllamaModels^(host ^|^| undefined^);
+  echo     if ^(^!result ^|^| ^!result.ok^) {
+  echo       throw new Error^(result?.error ^|^| 'Unable to reach Ollama.'^);
+  echo     }
+  echo     state.local.ollamaModels = result.models ^|^| [];
+  echo     updateLocalManifest^(
+  echo       {
+  echo         host: host ^|^| state.localManifest?.host ^|^| '',
+  echo         model: state.settings.ollamaModel ^|^| state.localManifest?.model ^|^| ''
+  echo       },
+  echo       { skipSummary: true }
+  echo     ^);
+  echo     renderOllamaModels^(^);
+  echo     renderAssistantSummary^(^);
+  echo     if ^(^!silent^) {
+  echo       showToast^('Ollama models refreshed.'^);
+  echo     }
+  echo   } catch ^(error^) {
+  echo     state.local.ollamaModels = [];
+  echo     renderOllamaModels^(^);
+  echo     updateLocalManifest^(
+  echo       {
+  echo         host: elements.ollamaHostField.value.trim^(^) ^|^| state.localManifest?.host ^|^| ''
+  echo       },
+  echo       { skipSummary: false }
+  echo     ^);
+  echo     if ^(^!silent^) {
+  echo       showToast^(`Ollama: ${error.message}`^);
+  echo     }
+  echo   } finally {
+  echo     setOllamaBusy^(false^);
+  echo   }
+  echo }
+  echo.
+  echo async function runOllamaGeneration^(^) {
+  echo   const model = elements.ollamaModelSelect.value ^|^| state.settings.ollamaModel;
+  echo   const prompt = elements.ollamaPrompt.value.trim^(^);
+  echo   if ^(^!model^) {
+  echo     showToast^('Choose an Ollama model.'^);
+  echo     return;
+  echo   }
+  echo   if ^(^!prompt^) {
+  echo     showToast^('Enter a prompt for Ollama.'^);
+  echo     return;
+  echo   }
+  echo   try {
+  echo     setOllamaBusy^(true^);
+  echo     const host = elements.ollamaHostField.value.trim^(^);
+  echo     state.settings.ollamaHost = host;
+  echo     scheduleSettingsSave^(^);
+  echo     const result = await api.generateOllama^({ model, prompt, host: host ^|^| undefined }^);
+  echo     if ^(^!result ^|^| ^!result.ok^) {
+  echo       throw new Error^(result?.error ^|^| 'Generation failed.'^);
+  echo     }
+  echo     const text = ^(result.text ^|^| ''^).trim^(^);
+  echo     state.local.ollamaOutput = text;
+  echo     updateLocalManifest^({ host: host ^|^| state.localManifest?.host ^|^| '', model }^);
+  echo     renderOllamaOutput^(^);
+  echo     if ^(text^) {
+  echo       pushAttachment^({
+  echo         type: 'text',
+  echo         title: `Ollama ^(${model}^)`,
+  echo         meta: host ? `Host ${host}` : 'Local host',
+  echo         body: text
+  echo       }^);
+  echo     }
+  echo     showToast^('Ollama response ready.'^);
+  echo   } catch ^(error^) {
+  echo     showToast^(`Ollama: ${error.message}`^);
+  echo   } finally {
+  echo     setOllamaBusy^(false^);
+  echo   }
+  echo }
+  echo.
+  echo function renderComfyStatus^(message, isError = false^) {
+  echo   if ^(^!elements.comfyStatus^) return;
+  echo   elements.comfyStatus.textContent = message;
+  echo   elements.comfyStatus.classList.toggle^('error', ^!^!isError^);
+  echo }
+  echo.
+  echo function setComfyBusy^(isBusy^) {
+  echo   state.local.comfyBusy = isBusy;
+  echo   if ^(elements.comfyRefresh^) {
+  echo     elements.comfyRefresh.disabled = isBusy;
+  echo   }
+  echo   if ^(elements.comfyRun^) {
+  echo     elements.comfyRun.disabled = isBusy;
+  echo   }
+  echo }
+  echo.
+  echo function renderComfyGallery^(^) {
+  echo   if ^(^!elements.comfyGallery^) return;
+  echo   elements.comfyGallery.innerHTML = '';
+  echo   if ^(^!state.local.comfyJobs.length^) {
+  echo     renderComfyStatus^('No ComfyUI results yet.'^);
+  echo     return;
+  echo   }
+  echo   renderComfyStatus^(`Showing ${state.local.comfyJobs.length} recent ComfyUI jobs.`^);
+  echo   let assetCount = 0;
+  echo   state.local.comfyJobs.forEach^(^(job^) =^> {
+  echo     const assets = [...^(job.images ^|^| []^), ...^(job.videos ^|^| []^)];
+  echo     if ^(^!assets.length^) return;
+  echo     assets.forEach^(^(asset^) =^> {
+  echo       const item = document.createElement^('div'^);
+  echo       item.className = 'gallery-item';
+  echo       const isVideo = ^(asset.mime ^|^| ''^).startsWith^('video/'^);
+  echo       const media = document.createElement^(isVideo ? 'video' : 'img'^);
+  echo       media.src = asset.url;
+  echo       if ^(isVideo^) {
+  echo         media.controls = true;
+  echo       }
+  echo       item.appendChild^(media^);
+  echo       const caption = document.createElement^('div'^);
+  echo       const created = job.created ? new Date^(job.created^).toLocaleTimeString^(^) : '';
+  echo       caption.textContent = `${job.title ^|^| job.id}${created ? ` · ${created}` : ''}`;
+  echo       item.appendChild^(caption^);
+  echo       const meta = document.createElement^('div'^);
+  echo       meta.className = 'attachment-meta';
+  echo       meta.textContent = asset.filename ^|^| '';
+  echo       item.appendChild^(meta^);
+  echo       const btn = document.createElement^('button'^);
+  echo       btn.className = 'secondary';
+  echo       btn.textContent = 'Import to attachments';
+  echo       btn.addEventListener^('click', async ^(^) =^> {
+  echo         await importComfyAsset^(job, asset^);
+  echo       }^);
+  echo       item.appendChild^(btn^);
+  echo       elements.comfyGallery.appendChild^(item^);
+  echo       assetCount += 1;
+  echo     }^);
+  echo   }^);
+  echo   if ^(^!assetCount^) {
+  echo     renderComfyStatus^('Recent jobs do not contain downloadable assets yet.'^);
+  echo   }
+  echo }
+  echo.
+  echo async function refreshComfyHistory^({ silent = false } = {}^) {
+  echo   if ^(^!elements.comfyHostField^) return;
+  echo   try {
+  echo     setComfyBusy^(true^);
+  echo     const host = elements.comfyHostField.value.trim^(^);
+  echo     state.settings.comfyHost = host;
+  echo     scheduleSettingsSave^(^);
+  echo     const result = await api.listComfyJobs^({ limit: 12, host }^);
+  echo     if ^(^!result ^|^| ^!result.ok^) {
+  echo       throw new Error^(result?.error ^|^| 'Unable to reach ComfyUI.'^);
+  echo     }
+  echo     state.local.comfyJobs = result.jobs ^|^| [];
+  echo     renderComfyGallery^(^);
+  echo     if ^(^!silent^) {
+  echo       showToast^('ComfyUI results updated.'^);
+  echo     }
+  echo     if ^(state.settings.comfyAutoImport^) {
+  echo       autoImportComfyResult^(^);
+  echo     }
+  echo   } catch ^(error^) {
+  echo     state.local.comfyJobs = [];
+  echo     renderComfyGallery^(^);
+  echo     renderComfyStatus^(error.message ^|^| 'Unable to reach ComfyUI.', true^);
+  echo     if ^(^!silent^) {
+  echo       showToast^(`ComfyUI: ${error.message}`^);
+  echo     }
+  echo   } finally {
+  echo     setComfyBusy^(false^);
+  echo   }
+  echo }
+  echo.
+  echo function buildComfyAssetKey^(job, asset^) {
+  echo   return `${job.id ^|^| 'job'}:${asset.filename ^|^| 'asset'}:${asset.subfolder ^|^| ''}`;
+  echo }
+  echo.
+  echo async function importComfyAsset^(job, asset^) {
+  echo   try {
+  echo     const key = buildComfyAssetKey^(job, asset^);
+  echo     if ^(state.local.comfyImported.has^(key^)^) {
+  echo       showToast^('Asset already imported.'^);
+  echo       return;
+  echo     }
+  echo     state.local.comfyImported.add^(key^);
+  echo     const host = elements.comfyHostField ? elements.comfyHostField.value.trim^(^) : '';
+  echo     const result = await api.fetchComfyAsset^({
+  echo       filename: asset.filename,
+  echo       subfolder: asset.subfolder,
+  echo       type: asset.type,
+  echo       mime: asset.mime,
+  echo       host: host ^|^| undefined
+  echo     }^);
+  echo     if ^(^!result ^|^| ^!result.ok^) {
+  echo       throw new Error^(result?.error ^|^| 'Unable to fetch asset.'^);
+  echo     }
+  echo     const type = ^(asset.mime ^|^| ''^).startsWith^('video/'^) ? 'video' : 'image';
+  echo     pushAttachment^({
+  echo       type,
+  echo       title: `${job.title ^|^| 'ComfyUI asset'}`,
+  echo       meta: asset.filename ^|^| '',
+  echo       body: `${job.title ^|^| job.id} · ${asset.filename ^|^| ''}`.trim^(^),
+  echo       dataUrl: result.dataUrl,
+  echo       assetKey: key
+  echo     }^);
+  echo     showToast^('ComfyUI asset imported.'^);
+  echo   } catch ^(error^) {
+  echo     const key = buildComfyAssetKey^(job, asset^);
+  echo     if ^(state.local.comfyImported.has^(key^) ^&^& ^!state.attachments.some^(^(att^) =^> att.assetKey === key^)^) {
+  echo       state.local.comfyImported.delete^(key^);
+  echo     }
+  echo     showToast^(`ComfyUI: ${error.message}`^);
+  echo   }
+  echo }
+  echo.
+  echo function autoImportComfyResult^(^) {
+  echo   const jobs = state.local.comfyJobs ^|^| [];
+  echo   for ^(const job of jobs^) {
+  echo     const assets = [...^(job.images ^|^| []^), ...^(job.videos ^|^| []^)];
+  echo     for ^(const asset of assets^) {
+  echo       const key = buildComfyAssetKey^(job, asset^);
+  echo       if ^(^!state.local.comfyImported.has^(key^)^) {
+  echo         importComfyAsset^(job, asset^);
+  echo         return;
+  echo       }
+  echo     }
+  echo   }
+  echo }
+  echo.
+  echo async function startRoundTable^(^) {
+  echo   const targets = Array.from^(state.selected^);
+  echo   if ^(^!targets.length^) {
+  echo     showToast^('Select assistants for the round-table.'^);
+  echo     return;
+  echo   }
+  echo   const message = elements.composerInput.value.trim^(^);
+  echo   if ^(^!message^) {
+  echo     showToast^('Composer is empty.'^);
+  echo     return;
+  echo   }
+  echo   const turns = Number^(elements.roundTurns.value^) ^|^| state.settings.roundTableTurns ^|^| 1;
+  echo   if ^(state.settings.confirmBeforeSend^) {
+  echo     const ok = await confirmSend^(`Start round-table with ${targets.length} assistants for ${turns} turns?`^);
+  echo     if ^(^!ok^) return;
+  echo   }
+  echo   state.round.active = true;
+  echo   state.round.paused = false;
+  echo   state.round.baseMessage = message;
+  echo   state.round.turnsRemaining = turns;
+  echo   state.round.queue = buildRoundQueue^(targets^);
+  echo   state.round.lastTranscript = '';
+  echo   appendLog^(`Round-table started ^(${turns} turns^).`^);
+  echo   processRoundStep^(^);
+  echo }
+  echo.
+  echo elements.roundStart.addEventListener^('click', startRoundTable^);
+  echo.
+  echo elements.roundPause.addEventListener^('click', ^(^) =^> {
+  echo   if ^(^!state.round.active^) return;
+  echo   state.round.paused = true;
+  echo   appendLog^('Round-table paused.'^);
+  echo }^);
+  echo.
+  echo elements.roundResume.addEventListener^('click', ^(^) =^> {
+  echo   if ^(^!state.round.active^) return;
+  echo   state.round.paused = false;
+  echo   appendLog^('Round-table resumed.'^);
+  echo   processRoundStep^(^);
+  echo }^);
+  echo.
+  echo elements.roundStop.addEventListener^('click', stopRoundTable^);
+  echo.
+  echo elements.exportLogBtn.addEventListener^('click', async ^(^) =^> {
+  echo   const payload = state.log.join^('\n'^);
+  echo   const result = await api.exportLog^(payload^);
+  echo   if ^(result ^&^& result.ok^) {
+  echo     showToast^(`Log exported to ${result.path}`^);
+  echo   }
+  echo }^);
+  echo.
+  echo elements.refreshAgents.addEventListener^('click', async ^(^) =^> {
+  echo   for ^(const key of Object.keys^(state.selectors^)^) {
+  echo     await ensureAgent^(key^);
+  echo   }
+  echo   showToast^('Agent status refreshed.'^);
+  echo }^);
+  echo.
+  echo function stopRoundTable^(^) {
+  echo   if ^(^!state.round.active^) return;
+  echo   state.round.active = false;
+  echo   state.round.paused = false;
+  echo   state.round.queue = [];
+  echo   state.round.turnsRemaining = 0;
+  echo   if ^(state.round.timer^) {
+  echo     clearTimeout^(state.round.timer^);
+  echo     state.round.timer = null;
+  echo   }
+  echo   appendLog^('Round-table stopped.'^);
+  echo }
+  echo.
+  echo function buildRoundQueue^(targets^) {
+  echo   const ordered = state.order.filter^(^(key^) =^> targets.includes^(key^)^);
+  echo   return [...ordered];
+  echo }
+  echo.
+  echo async function processRoundStep^(^) {
+  echo   if ^(^!state.round.active^) {
+  echo     return;
+  echo   }
+  echo   if ^(state.round.paused^) {
+  echo     state.round.timer = setTimeout^(processRoundStep, 500^);
+  echo     return;
+  echo   }
+  echo   if ^(state.round.queue.length === 0^) {
+  echo     state.round.turnsRemaining -= 1;
+  echo     if ^(state.round.turnsRemaining ^<= 0^) {
+  echo       appendLog^('Round-table completed.'^);
+  echo       stopRoundTable^(^);
+  echo       return;
+  echo     }
+  echo     state.round.queue = buildRoundQueue^(Array.from^(state.selected^)^);
+  echo   }
+  echo   const key = state.round.queue.shift^(^);
+  echo   const message = buildRoundMessage^(key^);
+  echo   try {
+  echo     await ensureAgent^(key^);
+  echo     await api.sendAgent^({ key, text: message }^);
+  echo     appendLog^(`Round-table: sent turn to ${key}.`^);
+  echo     const messages = await api.readAgent^(key^);
+  echo     state.round.lastTranscript = messages.join^('\n'^);
+  echo   } catch ^(error^) {
+  echo     appendLog^(`Round-table: ${key} failed ^(${error.message ^|^| error}^).`^);
+  echo     showToast^(`${key} send failed during round-table.`^);
+  echo   }
+  echo   state.round.timer = setTimeout^(processRoundStep, 400^);
+  echo }
+  echo.
+  echo function buildRoundMessage^(key^) {
+  echo   const history = state.round.lastTranscript
+  echo     ? `\n\nLatest transcript:\n${state.round.lastTranscript}`
+  echo     : '';
+  echo   return `${state.round.baseMessage}${history}`;
+  echo }
+  echo.
+  echo async function reloadSelectors^(^) {
+  echo   const payload = await api.bootstrap^(^);
+  echo   state.selectors = payload.selectors;
+  echo   state.settings = payload.settings;
+  echo   state.log = payload.log ^|^| [];
+  echo   if ^(payload.defaults^) {
+  echo     state.defaultSelectors = payload.defaults;
+  echo   }
+  echo   if ^(payload.defaultKeys ^&^& payload.defaultKeys.length^) {
+  echo     state.defaultKeys = payload.defaultKeys;
+  echo   }
+  echo   state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : state.localManifest;
+  echo   syncAssistantManifest^(payload.order ^|^| state.order^);
+  echo   renderLog^(^);
+  echo   renderAgents^(^);
+  echo   renderSiteEditor^(^);
+  echo   hydrateSettings^(^);
+  echo   refreshOllamaModels^({ silent: true }^);
+  echo   refreshComfyHistory^({ silent: true }^);
+  echo   renderAttachments^(^);
+  echo   clearNewSiteForm^(^);
+  echo }
+  echo.
+  echo function hydrateSettings^(^) {
+  echo   elements.confirmToggle.checked = ^!^!state.settings.confirmBeforeSend;
+  echo   elements.delayMin.value = state.settings.delayMin ^|^| 0;
+  echo   elements.delayMax.value = state.settings.delayMax ^|^| 0;
+  echo   elements.messageLimit.value = state.settings.messageLimit ^|^| 5;
+  echo   elements.defaultTurns.value = state.settings.roundTableTurns ^|^| 2;
+  echo   elements.copilotHost.value = state.settings.copilotHost ^|^| '';
+  echo   elements.roundTurns.value = state.settings.roundTableTurns ^|^| 2;
+  echo   elements.settingsComfyHost.value = state.settings.comfyHost ^|^| '';
+  echo   elements.settingsComfyAuto.checked = ^!^!state.settings.comfyAutoImport;
+  echo   elements.settingsOllamaHost.value = state.settings.ollamaHost ^|^| '';
+  echo   elements.settingsOllamaModel.value = state.settings.ollamaModel ^|^| '';
+  echo   syncStudioHosts^(^);
+  echo }
+  echo.
+  echo async function bootstrap^(^) {
+  echo   const payload = await api.bootstrap^(^);
+  echo   state.selectors = payload.selectors ^|^| {};
+  echo   state.settings = payload.settings ^|^| {};
+  echo   state.log = payload.log ^|^| [];
+  echo   state.defaultSelectors = payload.defaults ^|^| state.defaultSelectors ^|^| {};
+  echo   if ^(payload.defaultKeys ^&^& payload.defaultKeys.length^) {
+  echo     state.defaultKeys = payload.defaultKeys;
+  echo   } else if ^(payload.defaults^) {
+  echo     state.defaultKeys = Object.keys^(payload.defaults^);
+  echo   }
+  echo   state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : null;
+  echo   syncAssistantManifest^(payload.order ^|^| []^);
+  echo   renderLog^(^);
+  echo   renderAgents^(^);
+  echo   renderSiteEditor^(^);
+  echo   hydrateSettings^(^);
+  echo   refreshOllamaModels^({ silent: true }^);
+  echo   refreshComfyHistory^({ silent: true }^);
+  echo   renderAttachments^(^);
+  echo   clearNewSiteForm^(^);
+  echo }
+  echo.
+  echo api.onStatus^(^(status^) =^> {
+  echo   state.agents[status.key] = { ...state.agents[status.key], ...status };
+  echo   if ^(status.key === LOCAL_AGENT_KEY^) {
+  echo     updateLocalManifest^({
+  echo       host: status.host ^|^| state.localManifest?.host ^|^| state.settings.ollamaHost ^|^| '',
+  echo       model: status.model ^|^| state.localManifest?.model ^|^| state.settings.ollamaModel ^|^| ''
+  echo     }^);
+  echo   }
+  echo   renderAgents^(^);
+  echo }^);
+  echo.
+  echo api.onStatusInit^(^(entries^) =^> {
+  echo   entries.forEach^(^(entry^) =^> {
+  echo     state.agents[entry.key] = { ...state.agents[entry.key], ...entry };
+  echo     if ^(entry.key === LOCAL_AGENT_KEY^) {
+  echo       updateLocalManifest^(
+  echo         {
+  echo           host: entry.host ^|^| state.localManifest?.host ^|^| state.settings.ollamaHost ^|^| '',
+  echo           model: entry.model ^|^| state.localManifest?.model ^|^| state.settings.ollamaModel ^|^| ''
+  echo         },
+  echo         { skipSummary: true }
+  echo       ^);
+  echo     }
+  echo   }^);
+  echo   renderAssistantSummary^(^);
+  echo   renderAgents^(^);
+  echo }^);
+  echo.
+  echo api.onLog^(^(entry^) =^> {
+  echo   appendLog^(entry^);
+  echo }^);
+  echo.
+  echo api.onToast^(^(message^) =^> {
+  echo   showToast^(message^);
+  echo }^);
+  echo.
+  echo api.onLocalMessage^(^(payload^) =^> {
+  echo   if ^(^!payload ^|^| ^!payload.response^) {
+  echo     return;
+  echo   }
+  echo   const timestamp = payload.timestamp ? new Date^(payload.timestamp^) : new Date^(^);
+  echo   const stamp = timestamp.toLocaleString^(^);
+  echo   const modelLabel = payload.model ^|^| state.settings.ollamaModel ^|^| 'local model';
+  echo   updateLocalManifest^({
+  echo     model: modelLabel,
+  echo     host: state.localManifest?.host ^|^| state.settings.ollamaHost ^|^| ''
+  echo   }^);
+  echo   pushAttachment^({
+  echo     type: 'text',
+  echo     title: `Local ^(${modelLabel}^)`,
+  echo     meta: `Generated ${stamp}`,
+  echo     body: payload.response.trim^(^)
+  echo   }^);
+  echo   showToast^('Local model response added to attachments.'^);
+  echo }^);
+  echo.
+  echo window.addEventListener^('beforeunload', ^(^) =^> {
+  echo   stopRoundTable^(^);
+  echo }^);
+  echo.
+  echo bootstrap^(^);
+)
+endlocal
 exit /b
 
 :write_styles_css
@@ -1700,7 +3498,7 @@ setlocal DisableDelayedExpansion
   echo }
   echo.
   echo #composerInput {
-  echo   width: 100%;
+  echo   width: 100%%;
   echo   min-height: 220px;
   echo   padding: 12px;
   echo   font-size: 15px;
@@ -1811,13 +3609,13 @@ setlocal DisableDelayedExpansion
   echo }
   echo .attachment-media img,
   echo .attachment-media video {
-  echo   max-width: 100%;
+  echo   max-width: 100%%;
   echo   border-radius: 6px;
   echo   border: 1px solid #cbd5f5;
   echo }
   echo.
   echo .attachment-media-item {
-  echo   max-width: 100%;
+  echo   max-width: 100%%;
   echo }
   echo.
   echo .log {
@@ -1961,9 +3759,9 @@ setlocal DisableDelayedExpansion
   echo.
   echo .toast {
   echo   position: fixed;
-  echo   left: 50%;
+  echo   left: 50%%;
   echo   bottom: 32px;
-  echo   transform: translateX^(-50%^);
+  echo   transform: translateX^(-50%%^);
   echo   background: #1e293b;
   echo   color: #ffffff;
   echo   padding: 12px 20px;
@@ -1991,7 +3789,7 @@ setlocal DisableDelayedExpansion
   echo .site-row input[type="text"],
   echo .site-row input[type="url"],
   echo .site-row textarea {
-  echo   width: 100%;
+  echo   width: 100%%;
   echo   padding: 8px;
   echo   border-radius: 6px;
   echo   border: 1px solid #cbd5f5;
@@ -2177,13 +3975,13 @@ setlocal DisableDelayedExpansion
   echo.
   echo .gallery-item img,
   echo .gallery-item video {
-  echo   max-width: 100%;
+  echo   max-width: 100%%;
   echo   border-radius: 8px;
   echo   border: 1px solid #cbd5f5;
   echo }
   echo.
   echo .gallery-item button {
-  echo   width: 100%;
+  echo   width: 100%%;
   echo }
   echo.
   echo .utility-actions {
@@ -2304,34 +4102,6 @@ setlocal DisableDelayedExpansion
 endlocal
 exit /b
 
-:write_block
-setlocal DisableDelayedExpansion
-set "TARGET=%~1"
-set "MARKER=%~2"
-call :emit_block %MARKER% > "%TARGET%"
-endlocal
-exit /b
-
-:emit_block
-setlocal DisableDelayedExpansion
-set "MARKER=%~1"
-set "BEGIN=%MARKER%_BEGIN"
-set "END=%MARKER%_END"
-set "COPY="
-for /f "usebackq tokens=1* delims=:" %%A in (`findstr /n "^" "%~f0"`) do (
-  if not defined COPY (
-    if "%%B"=="%BEGIN%" (
-      set "COPY=1"
-    )
-  ) else (
-    if "%%B"=="%END%" goto :emit_block_done
-    echo %%B
-  )
-)
-:emit_block_done
-endlocal
-exit /b
-
 :flatten_dir
 setlocal EnableDelayedExpansion
 set "TARGET_DIR=%~1"
@@ -2377,1794 +4147,3 @@ exit /b 0
 :end
 endlocal
 goto :EOF
-
-:renderer_js_BEGIN
-const api = window.omnichat;
-
-const elements = {
-  agentList: document.getElementById('agentList'),
-  assistantSummary: document.getElementById('assistantSummary'),
-  refreshAgents: document.getElementById('refreshAgents'),
-  manageAssistants: document.getElementById('manageAssistants'),
-  composerInput: document.getElementById('composerInput'),
-  broadcastBtn: document.getElementById('broadcastBtn'),
-  singleTarget: document.getElementById('singleTarget'),
-  singleSendBtn: document.getElementById('singleSendBtn'),
-  roundTurns: document.getElementById('roundTurns'),
-  roundStart: document.getElementById('roundStartBtn'),
-  roundPause: document.getElementById('roundPauseBtn'),
-  roundResume: document.getElementById('roundResumeBtn'),
-  roundStop: document.getElementById('roundStopBtn'),
-  targetChips: document.getElementById('targetChips'),
-  quoteBtn: document.getElementById('quoteBtn'),
-  snapshotBtn: document.getElementById('snapshotBtn'),
-  attachBtn: document.getElementById('attachBtn'),
-  attachments: document.getElementById('attachments'),
-  logView: document.getElementById('logView'),
-  exportLogBtn: document.getElementById('exportLogBtn'),
-  settingsModal: document.getElementById('settingsModal'),
-  openSettings: document.getElementById('openSettings'),
-  closeSettings: document.getElementById('closeSettings'),
-  confirmModal: document.getElementById('confirmModal'),
-  confirmMessage: document.getElementById('confirmMessage'),
-  confirmCancel: document.getElementById('confirmCancel'),
-  confirmOk: document.getElementById('confirmOk'),
-  toast: document.getElementById('toast'),
-  siteEditor: document.getElementById('siteEditor'),
-  resetSiteForm: document.getElementById('resetSiteForm'),
-  newSiteName: document.getElementById('newSiteName'),
-  newSiteKey: document.getElementById('newSiteKey'),
-  newSiteTemplate: document.getElementById('newSiteTemplate'),
-  newSiteHome: document.getElementById('newSiteHome'),
-  newSitePatterns: document.getElementById('newSitePatterns'),
-  newSiteInput: document.getElementById('newSiteInput'),
-  newSiteSend: document.getElementById('newSiteSend'),
-  newSiteMessages: document.getElementById('newSiteMessages'),
-  addSiteBtn: document.getElementById('addSiteBtn'),
-  confirmToggle: document.getElementById('confirmToggle'),
-  delayMin: document.getElementById('delayMin'),
-  delayMax: document.getElementById('delayMax'),
-  messageLimit: document.getElementById('messageLimit'),
-  defaultTurns: document.getElementById('defaultTurns'),
-  copilotHost: document.getElementById('copilotHost'),
-  settingsComfyHost: document.getElementById('settingsComfyHost'),
-  settingsComfyAuto: document.getElementById('settingsComfyAuto'),
-  settingsOllamaHost: document.getElementById('settingsOllamaHost'),
-  settingsOllamaModel: document.getElementById('settingsOllamaModel'),
-  importSelectorsBtn: document.getElementById('importSelectorsBtn'),
-  exportSelectorsBtn: document.getElementById('exportSelectorsBtn'),
-  openConfigBtn: document.getElementById('openConfigBtn'),
-  ollamaHostField: document.getElementById('ollamaHostField'),
-  ollamaRefresh: document.getElementById('ollamaRefresh'),
-  ollamaModelSelect: document.getElementById('ollamaModelSelect'),
-  ollamaPrompt: document.getElementById('ollamaPrompt'),
-  ollamaGenerate: document.getElementById('ollamaGenerate'),
-  ollamaInsert: document.getElementById('ollamaInsert'),
-  ollamaOutput: document.getElementById('ollamaOutput'),
-  comfyHostField: document.getElementById('comfyHostField'),
-  comfyRefresh: document.getElementById('comfyRefresh'),
-  comfyRun: document.getElementById('comfyRun'),
-  comfyStatus: document.getElementById('comfyStatus'),
-  comfyGallery: document.getElementById('comfyGallery')
-};
-
-const DEFAULT_KEY_FALLBACK = ['chatgpt', 'claude', 'copilot', 'gemini'];
-const LOCAL_AGENT_KEY = 'local-ollama';
-
-const state = {
-  selectors: {},
-  defaultSelectors: {},
-  assistants: {},
-  localManifest: null,
-  settings: {},
-  order: [],
-  defaultKeys: [...DEFAULT_KEY_FALLBACK],
-  selected: new Set(),
-  agents: {},
-  log: [],
-  attachments: [],
-  confirmResolver: null,
-  local: {
-    ollamaModels: [],
-    ollamaOutput: '',
-    ollamaBusy: false,
-    comfyJobs: [],
-    comfyBusy: false,
-    comfyImported: new Set()
-  },
-  round: {
-    active: false,
-    paused: false,
-    queue: [],
-    turnsRemaining: 0,
-    baseMessage: '',
-    lastTranscript: '',
-    timer: null
-  }
-};
-
-let settingsSaveTimer = null;
-
-function isDefaultKey(key) {
-  const defaults = state.defaultKeys && state.defaultKeys.length ? state.defaultKeys : DEFAULT_KEY_FALLBACK;
-  return defaults.includes(key);
-}
-
-function getDefaultLocalManifest() {
-  return {
-    key: LOCAL_AGENT_KEY,
-    type: 'local',
-    displayName: 'Local (Ollama)',
-    host: state.settings.ollamaHost || '',
-    model: state.settings.ollamaModel || ''
-  };
-}
-
-function syncAssistantManifest(orderOverride) {
-  const manifest = {};
-  Object.entries(state.selectors || {}).forEach(([key, config]) => {
-    manifest[key] = {
-      key,
-      type: 'web',
-      displayName: config.displayName || key,
-      home: config.home || '',
-      patterns: config.patterns || []
-    };
-  });
-  const local = state.localManifest || getDefaultLocalManifest();
-  const normalizedLocal = {
-    ...local,
-    host: state.settings.ollamaHost || local.host || '',
-    model: state.settings.ollamaModel || local.model || ''
-  };
-  manifest[normalizedLocal.key] = { ...normalizedLocal };
-  state.assistants = manifest;
-  updateLocalManifest(normalizedLocal, { skipSummary: true });
-
-  const currentOrder = Array.isArray(orderOverride) ? orderOverride : state.order;
-  const nextOrder = [];
-  (currentOrder || []).forEach((key) => {
-    if (manifest[key] && !nextOrder.includes(key)) {
-      nextOrder.push(key);
-    }
-  });
-  Object.keys(manifest).forEach((key) => {
-    if (!nextOrder.includes(key)) {
-      nextOrder.push(key);
-    }
-  });
-  state.order = nextOrder;
-
-  const previousSelection = new Set(state.selected || []);
-  const nextSelection = new Set();
-  previousSelection.forEach((key) => {
-    if (manifest[key]) {
-      nextSelection.add(key);
-    }
-  });
-  if (!nextSelection.size) {
-    nextOrder.forEach((key) => nextSelection.add(key));
-  }
-  state.selected = nextSelection;
-  renderAssistantSummary();
-}
-
-function renderAssistantSummary() {
-  if (!elements.assistantSummary) return;
-  const assistants = Object.values(state.assistants || {});
-  const browserAssistants = assistants
-    .filter((item) => item.type === 'web')
-    .map((item) => item.displayName || item.key);
-  const local = assistants.find((item) => item.type === 'local');
-  let hostLabel = '';
-  if (local?.host) {
-    try {
-      hostLabel = new URL(local.host).host || local.host;
-    } catch (error) {
-      hostLabel = local.host;
-    }
-  }
-  const browserInfo = browserAssistants.length
-    ? `Browser: ${browserAssistants.join(', ')}`
-    : 'Browser: none linked';
-  const localInfo = local
-    ? `Local: ${local.model ? local.model : 'model not selected'}${hostLabel ? ` @ ${hostLabel}` : ''}`
-    : 'Local: unavailable';
-  elements.assistantSummary.textContent = `${browserInfo} · ${localInfo}`;
-}
-
-function updateLocalManifest(patch = {}, options = {}) {
-  const next = {
-    ...(state.localManifest || getDefaultLocalManifest()),
-    ...patch
-  };
-  state.localManifest = next;
-  if (!state.assistants) {
-    state.assistants = {};
-  }
-  state.assistants[LOCAL_AGENT_KEY] = { ...next };
-  if (!options.skipSummary) {
-    renderAssistantSummary();
-  }
-}
-
-function scheduleSettingsSave() {
-  clearTimeout(settingsSaveTimer);
-  settingsSaveTimer = setTimeout(() => {
-    api.saveSettings(state.settings);
-  }, 400);
-}
-
-function appendLog(entry) {
-  state.log.push(entry);
-  if (state.log.length > 2000) {
-    state.log = state.log.slice(-2000);
-  }
-  renderLog();
-}
-
-function renderLog() {
-  elements.logView.innerHTML = '';
-  state.log.slice(-400).forEach((line) => {
-    const div = document.createElement('div');
-    div.className = 'log-entry';
-    div.textContent = line;
-    elements.logView.appendChild(div);
-  });
-  elements.logView.scrollTop = elements.logView.scrollHeight;
-}
-
-function showToast(message, timeout = 4000) {
-  elements.toast.textContent = message;
-  elements.toast.classList.remove('hidden');
-  clearTimeout(elements.toast._timer);
-  elements.toast._timer = setTimeout(() => {
-    elements.toast.classList.add('hidden');
-  }, timeout);
-}
-
-function confirmSend(message) {
-  if (!state.settings.confirmBeforeSend) {
-    return Promise.resolve(true);
-  }
-  elements.confirmMessage.textContent = message;
-  elements.confirmModal.classList.remove('hidden');
-  return new Promise((resolve) => {
-    state.confirmResolver = resolve;
-  });
-}
-
-elements.confirmCancel.addEventListener('click', () => {
-  if (state.confirmResolver) {
-    state.confirmResolver(false);
-    state.confirmResolver = null;
-  }
-  elements.confirmModal.classList.add('hidden');
-});
-
-elements.confirmOk.addEventListener('click', () => {
-  if (state.confirmResolver) {
-    state.confirmResolver(true);
-    state.confirmResolver = null;
-  }
-  elements.confirmModal.classList.add('hidden');
-});
-
-function buildAgentOrderControls(key) {
-  const container = document.createElement('div');
-  container.className = 'agent-order';
-  const up = document.createElement('button');
-  up.textContent = '▲';
-  up.addEventListener('click', () => {
-    const idx = state.order.indexOf(key);
-    if (idx > 0) {
-      const swap = state.order[idx - 1];
-      state.order[idx - 1] = key;
-      state.order[idx] = swap;
-      renderAgents();
-    }
-  });
-  const down = document.createElement('button');
-  down.textContent = '▼';
-  down.addEventListener('click', () => {
-    const idx = state.order.indexOf(key);
-    if (idx >= 0 && idx < state.order.length - 1) {
-      const swap = state.order[idx + 1];
-      state.order[idx + 1] = key;
-      state.order[idx] = swap;
-      renderAgents();
-    }
-  });
-  const badge = document.createElement('span');
-  badge.className = 'round-badge';
-  badge.textContent = `#${state.order.indexOf(key) + 1}`;
-  container.appendChild(up);
-  container.appendChild(down);
-  container.appendChild(badge);
-  return container;
-}
-
-function renderAgents() {
-  elements.agentList.innerHTML = '';
-  state.order.forEach((key) => {
-    const assistant = state.assistants[key];
-    if (!assistant) return;
-    const config = state.selectors[key];
-    const item = document.createElement('div');
-    item.className = 'agent-item';
-    if (assistant.type === 'local') {
-      item.classList.add('local');
-    }
-    if (state.selected.has(key)) {
-      item.classList.add('active');
-    }
-
-    const top = document.createElement('div');
-    top.className = 'agent-top';
-    const name = document.createElement('div');
-    const label = assistant.displayName || config?.displayName || key;
-    name.innerHTML = `<strong>${label}</strong> <span class="badge">${key}</span>`;
-
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.checked = state.selected.has(key);
-    toggle.addEventListener('change', () => {
-      if (toggle.checked) {
-        state.selected.add(key);
-      } else {
-        state.selected.delete(key);
-      }
-      renderAgents();
-    });
-
-    top.appendChild(name);
-    top.appendChild(toggle);
-
-    const status = document.createElement('div');
-    status.className = 'agent-status';
-    const data = state.agents[key];
-    const statusBits = [];
-    if (data && data.status) {
-      statusBits.push(data.status);
-    }
-    if (data && data.visible && assistant.type !== 'local') {
-      statusBits.push('visible');
-    }
-    if (data && data.error) {
-      statusBits.push(`error: ${data.error}`);
-    }
-    if (assistant.type === 'local') {
-      const host = (data && data.host) || state.settings.ollamaHost || '';
-      const model = (data && data.model) || state.settings.ollamaModel || '';
-      statusBits.push(model ? `model: ${model}` : 'model pending');
-      if (host) {
-        try {
-          const parsed = new URL(host);
-          statusBits.push(parsed.host || host);
-        } catch (error) {
-          statusBits.push(host);
-        }
-      } else {
-        statusBits.push('host offline');
-      }
-    } else if (data && data.url) {
-      try {
-        const url = new URL(data.url);
-        statusBits.push(url.hostname);
-      } catch (error) {
-        statusBits.push(data.url);
-      }
-    }
-    status.textContent = statusBits.join(' · ') || 'offline';
-
-    const actions = document.createElement('div');
-    actions.className = 'agent-actions';
-
-    if (assistant.type === 'local') {
-      const studioBtn = document.createElement('button');
-      studioBtn.className = 'secondary';
-      studioBtn.textContent = 'Focus Studio';
-      studioBtn.addEventListener('click', () => {
-        document.getElementById('ollamaHostField')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        showToast('Local Studio ready below.');
-      });
-      const refreshBtn = document.createElement('button');
-      refreshBtn.className = 'secondary';
-      refreshBtn.textContent = 'Refresh models';
-      refreshBtn.addEventListener('click', () => refreshOllamaModels());
-      actions.appendChild(studioBtn);
-      actions.appendChild(refreshBtn);
-    } else {
-      const connectBtn = document.createElement('button');
-      connectBtn.className = 'secondary';
-      connectBtn.textContent = 'Connect';
-      connectBtn.addEventListener('click', async () => {
-        await api.connectAgent(key);
-      });
-
-      const hideBtn = document.createElement('button');
-      hideBtn.className = 'secondary';
-      hideBtn.textContent = 'Hide';
-      hideBtn.addEventListener('click', async () => {
-        await api.hideAgent(key);
-      });
-
-      const readBtn = document.createElement('button');
-      readBtn.className = 'secondary';
-      readBtn.textContent = 'Read';
-      readBtn.addEventListener('click', async () => {
-        await ensureAgent(key);
-        const messages = await api.readAgent(key);
-        appendLog(`${key}:\n${messages.join('\n')}`);
-      });
-
-      actions.appendChild(connectBtn);
-      actions.appendChild(hideBtn);
-      actions.appendChild(readBtn);
-
-      if (!isDefaultKey(key)) {
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'secondary';
-        removeBtn.textContent = 'Remove';
-        removeBtn.addEventListener('click', () => {
-          delete state.selectors[key];
-          state.order = state.order.filter((k) => k !== key);
-          state.selected.delete(key);
-          persistSelectors();
-          renderAgents();
-          renderSiteEditor();
-        });
-        actions.appendChild(removeBtn);
-      } else {
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'secondary';
-        resetBtn.textContent = 'Reset';
-        resetBtn.addEventListener('click', async () => {
-          await api.resetAgentSelectors(key);
-          await reloadSelectors();
-          renderSiteEditor();
-        });
-        actions.appendChild(resetBtn);
-      }
-    }
-
-    const orderControls = buildAgentOrderControls(key);
-
-    item.appendChild(top);
-    item.appendChild(status);
-    item.appendChild(actions);
-    item.appendChild(orderControls);
-    elements.agentList.appendChild(item);
-  });
-  updateTargetControls();
-}
-
-function renderTargetDropdown() {
-  const selected = Array.from(state.order).filter((key) => state.assistants[key]);
-  elements.singleTarget.innerHTML = '';
-  selected.forEach((key) => {
-    const option = document.createElement('option');
-    const assistant = state.assistants[key];
-    option.value = key;
-    option.textContent = assistant.displayName || key;
-    elements.singleTarget.appendChild(option);
-  });
-  const firstSelected = Array.from(state.selected)[0];
-  if (firstSelected && state.selectors[firstSelected]) {
-    elements.singleTarget.value = firstSelected;
-  } else if (elements.singleTarget.options.length) {
-    elements.singleTarget.selectedIndex = 0;
-  }
-  elements.singleSendBtn.disabled = elements.singleTarget.options.length === 0;
-}
-
-function renderTargetChips() {
-  if (!elements.targetChips) return;
-  elements.targetChips.innerHTML = '';
-  const fragment = document.createDocumentFragment();
-  let hasAny = false;
-  state.order.forEach((key) => {
-    if (!state.assistants[key]) return;
-    hasAny = true;
-    const assistant = state.assistants[key];
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.textContent = assistant.displayName || key;
-    if (state.selected.has(key)) {
-      chip.classList.add('active');
-    }
-    chip.addEventListener('click', () => {
-      if (state.selected.has(key)) {
-        state.selected.delete(key);
-      } else {
-        state.selected.add(key);
-      }
-      renderAgents();
-    });
-    fragment.appendChild(chip);
-  });
-
-  if (!hasAny) {
-    const empty = document.createElement('span');
-    empty.className = 'chip-empty';
-    empty.textContent = 'No assistants available.';
-    fragment.appendChild(empty);
-  }
-
-  elements.targetChips.appendChild(fragment);
-}
-
-function updateTargetControls() {
-  renderTargetDropdown();
-  renderTargetChips();
-}
-
-function renderSiteEditor() {
-  elements.siteEditor.innerHTML = '';
-  const orderedKeys = state.order.length
-    ? state.order.filter((key) => state.selectors[key])
-    : Object.keys(state.selectors);
-  const extras = Object.keys(state.selectors).filter((key) => !orderedKeys.includes(key));
-  const keys = [...orderedKeys, ...extras];
-
-  keys.forEach((key) => {
-    const config = state.selectors[key];
-    if (!config) return;
-    const row = document.createElement('div');
-    row.className = 'site-row';
-    row.dataset.key = key;
-    row.innerHTML = `
-      <div class="agent-top">
-        <strong>${config.displayName || key}</strong>
-        <span class="badge">${key}</span>
-      </div>
-      <label>Display name
-        <input type="text" class="field-name" value="${config.displayName || ''}" />
-      </label>
-      <label>Home URL
-        <input type="text" class="field-home" value="${config.home || ''}" />
-      </label>
-      <label>URL patterns (one per line)
-        <textarea class="field-patterns">${(config.patterns || []).join('\n')}</textarea>
-      </label>
-      <label>Input selectors
-        <textarea class="field-input">${(config.input || []).join('\n')}</textarea>
-      </label>
-      <label>Send button selectors
-        <textarea class="field-send">${(config.sendButton || []).join('\n')}</textarea>
-      </label>
-      <label>Message container selectors
-        <textarea class="field-message">${(config.messageContainer || []).join('\n')}</textarea>
-      </label>
-    `;
-
-    const actions = document.createElement('div');
-    actions.className = 'site-actions';
-
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'secondary';
-    saveBtn.textContent = 'Save';
-    saveBtn.addEventListener('click', () => {
-      persistSelectors();
-      showToast(`${key} selectors saved.`);
-    });
-
-    actions.appendChild(saveBtn);
-
-    if (!isDefaultKey(key)) {
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'secondary';
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.addEventListener('click', () => {
-        delete state.selectors[key];
-        state.order = state.order.filter((k) => k !== key);
-        persistSelectors();
-        renderSiteEditor();
-        renderAgents();
-      });
-      actions.appendChild(deleteBtn);
-    }
-
-    row.appendChild(actions);
-    elements.siteEditor.appendChild(row);
-  });
-  populateTemplateSelect();
-}
-
-function slugifyKey(value = '') {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48);
-}
-
-function clearNewSiteForm() {
-  if (!elements.newSiteName) return;
-  elements.newSiteName.value = '';
-  if (elements.newSiteHome) elements.newSiteHome.value = '';
-  if (elements.newSitePatterns) elements.newSitePatterns.value = '';
-  if (elements.newSiteInput) elements.newSiteInput.value = '';
-  if (elements.newSiteSend) elements.newSiteSend.value = '';
-  if (elements.newSiteMessages) elements.newSiteMessages.value = '';
-  if (elements.newSiteTemplate) elements.newSiteTemplate.value = '';
-  if (elements.newSiteKey) {
-    elements.newSiteKey.value = '';
-    delete elements.newSiteKey.dataset.manual;
-  }
-}
-
-function populateTemplateSelect() {
-  if (!elements.newSiteTemplate) return;
-  const currentValue = elements.newSiteTemplate.value;
-  elements.newSiteTemplate.innerHTML = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = 'Choose template…';
-  elements.newSiteTemplate.appendChild(placeholder);
-
-  const seen = new Set();
-  const addOption = (value, label) => {
-    if (!value || seen.has(value)) return;
-    seen.add(value);
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = label;
-    elements.newSiteTemplate.appendChild(option);
-  };
-
-  Object.entries(state.defaultSelectors || {}).forEach(([key, config]) => {
-    addOption(`default:${key}`, `${config.displayName || key} (default)`);
-  });
-  Object.entries(state.selectors || {}).forEach(([key, config]) => {
-    addOption(`current:${key}`, `${config.displayName || key} (current)`);
-  });
-
-  if (currentValue && seen.has(currentValue)) {
-    elements.newSiteTemplate.value = currentValue;
-  }
-}
-
-function applyTemplateSelection(value) {
-  if (!value || !elements.newSiteKey) return;
-  const [scope, key] = value.split(':');
-  if (!key) return;
-  let template = null;
-  if (scope === 'default') {
-    template = state.defaultSelectors?.[key] || null;
-  } else if (scope === 'current') {
-    template = state.selectors?.[key] || null;
-  }
-  if (!template) return;
-  const displayName = template.displayName || key;
-  if (!elements.newSiteName.value.trim()) {
-    elements.newSiteName.value = displayName;
-  }
-  if (!elements.newSiteKey.dataset.manual || !elements.newSiteKey.value.trim()) {
-    elements.newSiteKey.value = slugifyKey(elements.newSiteName.value || displayName);
-  }
-  elements.newSiteHome.value = template.home || '';
-  elements.newSitePatterns.value = (template.patterns || []).join('\n');
-  elements.newSiteInput.value = (template.input || []).join('\n');
-  elements.newSiteSend.value = (template.sendButton || []).join('\n');
-  elements.newSiteMessages.value = (template.messageContainer || []).join('\n');
-}
-
-function collectNewSiteForm() {
-  if (!elements.newSiteName) return null;
-  const name = elements.newSiteName.value.trim();
-  let key = elements.newSiteKey.value.trim().toLowerCase();
-  if (!key) {
-    key = slugifyKey(name);
-    elements.newSiteKey.value = key;
-  }
-  if (!key) {
-    showToast('Enter an assistant key.');
-    return null;
-  }
-  if (!/^[a-z0-9\-]+$/.test(key)) {
-    showToast('Key must use letters, numbers, or hyphen.');
-    return null;
-  }
-  if (state.selectors[key]) {
-    showToast('That key already exists.');
-    return null;
-  }
-  const home = elements.newSiteHome.value.trim();
-  const patterns = elements.newSitePatterns.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const input = elements.newSiteInput.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const sendButton = elements.newSiteSend.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const messageContainer = elements.newSiteMessages.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  if (!patterns.length && home) {
-    patterns.push(home);
-  }
-  if (!patterns.length) {
-    showToast('Provide at least one URL pattern.');
-    return null;
-  }
-  if (!input.length) {
-    showToast('Provide at least one input selector.');
-    return null;
-  }
-  if (!sendButton.length) {
-    showToast('Provide at least one send button selector.');
-    return null;
-  }
-  if (!messageContainer.length) {
-    showToast('Provide at least one message container selector.');
-    return null;
-  }
-
-  const config = {
-    displayName: name || key,
-    home,
-    patterns,
-    input,
-    sendButton,
-    messageContainer
-  };
-
-  return { key, config };
-}
-
-function collectSelectorsFromEditor() {
-  const rows = elements.siteEditor.querySelectorAll('.site-row');
-  const next = {};
-  rows.forEach((row) => {
-    const key = row.dataset.key.trim();
-    const displayName = row.querySelector('.field-name').value.trim() || key;
-    const home = row.querySelector('.field-home').value.trim();
-    const patterns = row
-      .querySelector('.field-patterns')
-      .value.split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const input = row
-      .querySelector('.field-input')
-      .value.split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const sendButton = row
-      .querySelector('.field-send')
-      .value.split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const messageContainer = row
-      .querySelector('.field-message')
-      .value.split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    next[key] = {
-      displayName,
-      home,
-      patterns: patterns.length ? patterns : home ? [home] : [],
-      input,
-      sendButton,
-      messageContainer
-    };
-  });
-  return next;
-}
-
-async function persistSelectors() {
-  const next = collectSelectorsFromEditor();
-  state.selectors = next;
-  await api.saveSelectors(next);
-  syncAssistantManifest();
-  renderAgents();
-}
-
-function collectSettingsFromModal() {
-  return {
-    confirmBeforeSend: elements.confirmToggle.checked,
-    delayMin: Number(elements.delayMin.value) || 0,
-    delayMax: Number(elements.delayMax.value) || 0,
-    messageLimit: Number(elements.messageLimit.value) || 1,
-    roundTableTurns: Number(elements.defaultTurns.value) || 1,
-    copilotHost: elements.copilotHost.value.trim(),
-    comfyHost: elements.settingsComfyHost.value.trim(),
-    comfyAutoImport: elements.settingsComfyAuto.checked,
-    ollamaHost: elements.settingsOllamaHost.value.trim(),
-    ollamaModel: elements.settingsOllamaModel.value.trim()
-  };
-}
-
-async function persistSettings() {
-  const next = collectSettingsFromModal();
-  const previousOllamaHost = state.settings.ollamaHost;
-  const previousComfyHost = state.settings.comfyHost;
-  const previousComfyAuto = state.settings.comfyAutoImport;
-  state.settings = { ...state.settings, ...next };
-  await api.saveSettings(state.settings);
-  updateLocalManifest({
-    host: state.settings.ollamaHost || '',
-    model: state.settings.ollamaModel || state.localManifest?.model || ''
-  });
-  elements.roundTurns.value = state.settings.roundTableTurns;
-  syncStudioHosts();
-  if (next.ollamaHost !== previousOllamaHost) {
-    state.local.ollamaOutput = '';
-    renderOllamaOutput();
-    refreshOllamaModels({ silent: true });
-  }
-  if (next.comfyHost !== previousComfyHost) {
-    state.local.comfyImported = new Set();
-    refreshComfyHistory({ silent: true });
-  }
-  if (!previousComfyAuto && state.settings.comfyAutoImport) {
-    autoImportComfyResult();
-  }
-}
-
-function openSettingsModal() {
-  renderSiteEditor();
-  hydrateSettings();
-  elements.settingsModal.classList.remove('hidden');
-  document.body.classList.add('modal-open');
-}
-
-async function closeSettingsModal(save = true) {
-  if (save) {
-    await persistSelectors();
-    await persistSettings();
-    showToast('Settings saved.');
-  } else {
-    renderSiteEditor();
-    hydrateSettings();
-  }
-  elements.settingsModal.classList.add('hidden');
-  document.body.classList.remove('modal-open');
-}
-
-elements.openSettings.addEventListener('click', () => {
-  openSettingsModal();
-});
-
-if (elements.manageAssistants) {
-  elements.manageAssistants.addEventListener('click', () => {
-    openSettingsModal();
-  });
-}
-
-elements.closeSettings.addEventListener('click', async () => {
-  await closeSettingsModal(true);
-});
-
-elements.settingsModal.addEventListener('click', async (event) => {
-  if (event.target === elements.settingsModal) {
-    await closeSettingsModal(false);
-  }
-});
-
-document.addEventListener('keydown', async (event) => {
-  if (event.key === 'Escape' && !elements.settingsModal.classList.contains('hidden')) {
-    await closeSettingsModal(false);
-  }
-});
-
-if (elements.addSiteBtn) {
-  elements.addSiteBtn.addEventListener('click', async () => {
-    const entry = collectNewSiteForm();
-    if (!entry) {
-      return;
-    }
-    const { key, config } = entry;
-    state.selectors[key] = config;
-    if (!state.order.includes(key)) {
-      state.order.push(key);
-    }
-    state.selected.add(key);
-    await api.saveSelectors(state.selectors);
-    syncAssistantManifest();
-    renderAgents();
-    renderSiteEditor();
-    showToast(`${config.displayName || key} added.`);
-    clearNewSiteForm();
-  });
-}
-
-if (elements.resetSiteForm) {
-  elements.resetSiteForm.addEventListener('click', () => {
-    clearNewSiteForm();
-  });
-}
-
-if (elements.newSiteTemplate) {
-  elements.newSiteTemplate.addEventListener('change', () => {
-    applyTemplateSelection(elements.newSiteTemplate.value);
-  });
-}
-
-if (elements.newSiteName && elements.newSiteKey) {
-  elements.newSiteName.addEventListener('input', () => {
-    if (!elements.newSiteKey.dataset.manual) {
-      elements.newSiteKey.value = slugifyKey(elements.newSiteName.value);
-    }
-  });
-}
-
-if (elements.newSiteKey) {
-  elements.newSiteKey.addEventListener('input', () => {
-    if (elements.newSiteKey.value.trim()) {
-      elements.newSiteKey.dataset.manual = '1';
-    } else {
-      delete elements.newSiteKey.dataset.manual;
-      if (elements.newSiteName && elements.newSiteName.value.trim()) {
-        elements.newSiteKey.value = slugifyKey(elements.newSiteName.value);
-      }
-    }
-  });
-}
-
-if (elements.importSelectorsBtn) {
-  elements.importSelectorsBtn.addEventListener('click', async () => {
-    const result = await api.importSelectors();
-    if (result && result.ok) {
-      state.selectors = result.selectors || state.selectors;
-      state.order = Object.keys(state.selectors);
-      renderSiteEditor();
-      renderAgents();
-      showToast('selectors.json imported.');
-    } else if (result && result.error) {
-      showToast(`Import failed: ${result.error}`);
-    }
-  });
-}
-
-if (elements.exportSelectorsBtn) {
-  elements.exportSelectorsBtn.addEventListener('click', async () => {
-    const result = await api.exportSelectors();
-    if (result && result.ok) {
-      showToast(`selectors.json exported to ${result.path}`);
-    } else if (result && result.error) {
-      showToast(`Export failed: ${result.error}`);
-    }
-  });
-}
-
-if (elements.openConfigBtn) {
-  elements.openConfigBtn.addEventListener('click', async () => {
-    await api.openConfigFolder();
-    showToast('Config folder opened in Explorer.');
-  });
-}
-
-async function ensureAgent(key) {
-  try {
-    const status = await api.ensureAgent(key);
-    if (status) {
-      state.agents[key] = { ...state.agents[key], ...status };
-      renderAgents();
-    }
-  } catch (error) {
-    showToast(`${key}: unable to reach agent window.`);
-  }
-}
-
-async function sendToAgents(targets, message, modeLabel) {
-  if (!message) {
-    showToast('Composer is empty.');
-    return;
-  }
-  if (!targets.length) {
-    showToast('Select at least one assistant.');
-    return;
-  }
-  if (state.settings.confirmBeforeSend) {
-    const ok = await confirmSend(`Confirm ${modeLabel} to ${targets.length} assistant(s)?`);
-    if (!ok) {
-      return;
-    }
-  }
-  for (const key of targets) {
-    await ensureAgent(key);
-    try {
-      await api.sendAgent({ key, text: buildMessageWithAttachments(message) });
-      appendLog(`${key}: message queued.`);
-    } catch (error) {
-      appendLog(`${key}: send error ${error.message || error}`);
-      showToast(`${key}: failed to send. Check selectors.`);
-    }
-  }
-}
-
-function buildMessageWithAttachments(base) {
-  if (!state.attachments.length) return base;
-  const parts = [base];
-  state.attachments.forEach((attachment, index) => {
-    if (attachment.type === 'text') {
-      parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`);
-    } else {
-      const meta = attachment.meta ? `\n${attachment.meta}` : '';
-      parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}${meta}\n(${attachment.type || 'asset'} attached in OmniChat)`);
-    }
-  });
-  return parts.join('');
-}
-
-elements.broadcastBtn.addEventListener('click', async () => {
-  const targets = Array.from(state.selected);
-  const message = elements.composerInput.value.trim();
-  await sendToAgents(targets, message, 'broadcast');
-});
-
-elements.singleSendBtn.addEventListener('click', async () => {
-  const key = elements.singleTarget.value;
-  const message = elements.composerInput.value.trim();
-  if (!key) {
-    showToast('Choose a target.');
-    return;
-  }
-  await sendToAgents([key], message, `send to ${key}`);
-});
-
-function getPrimaryAgentKey() {
-  if (state.selected.size > 0) {
-    return Array.from(state.selected)[0];
-  }
-  const keys = state.order.filter((key) => state.assistants[key]);
-  return keys[0];
-}
-
-elements.quoteBtn.addEventListener('click', async () => {
-  const key = getPrimaryAgentKey();
-  if (!key) {
-    showToast('No assistants available.');
-    return;
-  }
-  await ensureAgent(key);
-  const result = await api.captureSelection(key);
-  if (!result || !result.ok || !result.selection) {
-    showToast('No selection captured.');
-    return;
-  }
-  pushAttachment({
-    title: `Quote from ${result.title || key}`,
-    meta: result.url || '',
-    body: result.selection
-  });
-});
-
-elements.snapshotBtn.addEventListener('click', async () => {
-  const key = getPrimaryAgentKey();
-  if (!key) {
-    showToast('No assistants available.');
-    return;
-  }
-  await ensureAgent(key);
-  const result = await api.snapshotPage({ key, limit: 2000 });
-  if (!result || !result.ok) {
-    showToast('Snapshot failed.');
-    return;
-  }
-  pushAttachment({
-    title: `Snapshot: ${result.title || key}`,
-    meta: result.url || '',
-    body: result.content || ''
-  });
-});
-
-elements.attachBtn.addEventListener('click', () => {
-  const text = prompt('Paste text to attach.');
-  if (!text) {
-    return;
-  }
-  const chunks = text.match(/.{1,1800}/gs) || [];
-  chunks.forEach((chunk, index) => {
-    pushAttachment({
-      title: index === 0 ? 'Snippet' : `Snippet part ${index + 1}`,
-      meta: `Length ${chunk.length} characters`,
-      body: chunk
-    });
-  });
-});
-
-if (elements.ollamaRefresh) {
-  elements.ollamaRefresh.addEventListener('click', () => {
-    refreshOllamaModels();
-  });
-}
-
-if (elements.ollamaGenerate) {
-  elements.ollamaGenerate.addEventListener('click', () => {
-    runOllamaGeneration();
-  });
-}
-
-if (elements.ollamaInsert) {
-  elements.ollamaInsert.addEventListener('click', () => {
-    if (!state.local.ollamaOutput) {
-      showToast('Generate with Ollama first.');
-      return;
-    }
-    const existing = elements.composerInput.value.trim();
-    const snippet = `Ollama (${state.settings.ollamaModel || 'model'}):\n${state.local.ollamaOutput}`;
-    elements.composerInput.value = existing ? `${existing}\n\n${snippet}` : snippet;
-  });
-}
-
-if (elements.ollamaModelSelect) {
-  elements.ollamaModelSelect.addEventListener('change', () => {
-    const value = elements.ollamaModelSelect.value;
-    state.settings.ollamaModel = value;
-    scheduleSettingsSave();
-    updateLocalManifest({ model: value });
-  });
-}
-
-if (elements.ollamaHostField) {
-  elements.ollamaHostField.addEventListener('change', () => {
-    state.settings.ollamaHost = elements.ollamaHostField.value.trim();
-    scheduleSettingsSave();
-    updateLocalManifest({ host: state.settings.ollamaHost });
-    state.local.ollamaOutput = '';
-    renderOllamaOutput();
-    refreshOllamaModels({ silent: true });
-  });
-}
-
-if (elements.comfyHostField) {
-  elements.comfyHostField.addEventListener('change', () => {
-    state.settings.comfyHost = elements.comfyHostField.value.trim();
-    scheduleSettingsSave();
-    state.local.comfyImported = new Set();
-    refreshComfyHistory({ silent: true });
-  });
-}
-
-if (elements.comfyRefresh) {
-  elements.comfyRefresh.addEventListener('click', () => {
-    refreshComfyHistory();
-  });
-}
-
-if (elements.comfyRun) {
-  elements.comfyRun.addEventListener('click', async () => {
-    try {
-      setComfyBusy(true);
-      const host = elements.comfyHostField.value.trim();
-      state.settings.comfyHost = host;
-      scheduleSettingsSave();
-      const result = await api.runComfyWorkflow(host || undefined);
-      if (!result || !result.ok) {
-        if (result?.canceled) {
-          renderComfyStatus('Workflow selection canceled.');
-          return;
-        }
-        throw new Error(result?.error || 'Workflow launch failed.');
-      }
-      renderComfyStatus('Workflow queued. Waiting for results…');
-      showToast('ComfyUI workflow submitted.');
-      setTimeout(() => refreshComfyHistory({ silent: true }), 3000);
-    } catch (error) {
-      renderComfyStatus(error.message || 'Workflow launch failed.', true);
-      showToast(`ComfyUI: ${error.message}`);
-    } finally {
-      setComfyBusy(false);
-    }
-  });
-}
-
-function pushAttachment(attachment) {
-  state.attachments.push({ type: 'text', ...attachment });
-  renderAttachments();
-}
-
-function renderAttachments() {
-  elements.attachments.innerHTML = '';
-  if (!state.attachments.length) {
-    elements.attachments.textContent = 'No attachments yet.';
-    return;
-  }
-  state.attachments.forEach((attachment, index) => {
-    const div = document.createElement('div');
-    div.className = 'attachment';
-    const title = document.createElement('div');
-    title.className = 'attachment-title';
-    title.textContent = `${index + 1}. ${attachment.title}`;
-    const meta = document.createElement('div');
-    meta.className = 'attachment-meta';
-    meta.textContent = attachment.meta;
-    const body = document.createElement('div');
-    body.className = 'attachment-body';
-    if (attachment.type === 'text') {
-      body.textContent = attachment.body;
-    } else {
-      body.textContent = attachment.body || `${attachment.type} attachment`;
-    }
-    const actions = document.createElement('div');
-    actions.className = 'site-actions';
-    const insertBtn = document.createElement('button');
-    insertBtn.className = 'secondary';
-    insertBtn.textContent = 'Insert into composer';
-    insertBtn.addEventListener('click', () => {
-      const chunk = attachment.type === 'text'
-        ? attachment.body
-        : `${attachment.title}\n${attachment.meta || ''}`.trim();
-      elements.composerInput.value = `${elements.composerInput.value}\n\n${chunk}`.trim();
-    });
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'secondary';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => {
-      state.attachments.splice(index, 1);
-      if (attachment.assetKey && state.local.comfyImported?.has(attachment.assetKey)) {
-        state.local.comfyImported.delete(attachment.assetKey);
-      }
-      renderAttachments();
-    });
-    actions.appendChild(insertBtn);
-    actions.appendChild(removeBtn);
-    let mediaWrapper = null;
-    if (attachment.dataUrl) {
-      const media = document.createElement(attachment.type === 'video' ? 'video' : 'img');
-      media.src = attachment.dataUrl;
-      media.className = 'attachment-media-item';
-      if (attachment.type === 'video') {
-        media.controls = true;
-      }
-      mediaWrapper = document.createElement('div');
-      mediaWrapper.className = 'attachment-media';
-      mediaWrapper.appendChild(media);
-    }
-    div.appendChild(title);
-    div.appendChild(meta);
-    div.appendChild(body);
-    if (mediaWrapper) {
-      div.appendChild(mediaWrapper);
-    }
-    div.appendChild(actions);
-    elements.attachments.appendChild(div);
-  });
-}
-
-function syncStudioHosts() {
-  if (elements.ollamaHostField) {
-    elements.ollamaHostField.value = state.settings.ollamaHost || elements.ollamaHostField.placeholder || '';
-  }
-  if (elements.comfyHostField) {
-    elements.comfyHostField.value = state.settings.comfyHost || elements.comfyHostField.placeholder || '';
-  }
-  updateLocalManifest(
-    {
-      host: state.settings.ollamaHost || state.localManifest?.host || '',
-      model: state.settings.ollamaModel || state.localManifest?.model || ''
-    },
-    { skipSummary: true }
-  );
-  renderOllamaModels();
-  renderOllamaOutput();
-  renderComfyGallery();
-  renderAssistantSummary();
-}
-
-function renderOllamaModels() {
-  if (!elements.ollamaModelSelect) return;
-  elements.ollamaModelSelect.innerHTML = '';
-  if (!state.local.ollamaModels.length) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = 'No models detected';
-    elements.ollamaModelSelect.appendChild(option);
-    elements.ollamaModelSelect.disabled = true;
-    if (state.settings.ollamaModel) {
-      state.settings.ollamaModel = '';
-      scheduleSettingsSave();
-    }
-    return;
-  }
-  elements.ollamaModelSelect.disabled = false;
-  state.local.ollamaModels.forEach((model) => {
-    const option = document.createElement('option');
-    option.value = model;
-    option.textContent = model;
-    elements.ollamaModelSelect.appendChild(option);
-  });
-  const preferred = state.settings.ollamaModel;
-  if (preferred && state.local.ollamaModels.includes(preferred)) {
-    elements.ollamaModelSelect.value = preferred;
-  } else {
-    elements.ollamaModelSelect.selectedIndex = 0;
-    state.settings.ollamaModel = elements.ollamaModelSelect.value;
-    scheduleSettingsSave();
-  }
-}
-
-function renderOllamaOutput() {
-  if (!elements.ollamaOutput) return;
-  elements.ollamaOutput.textContent = state.local.ollamaOutput || 'Generated text will appear here.';
-}
-
-function setOllamaBusy(isBusy) {
-  state.local.ollamaBusy = isBusy;
-  if (elements.ollamaGenerate) {
-    elements.ollamaGenerate.disabled = isBusy;
-  }
-  if (elements.ollamaRefresh) {
-    elements.ollamaRefresh.disabled = isBusy;
-  }
-}
-
-async function refreshOllamaModels({ silent = false } = {}) {
-  if (!elements.ollamaHostField) return;
-  try {
-    setOllamaBusy(true);
-    const host = elements.ollamaHostField.value.trim();
-    state.settings.ollamaHost = host;
-    scheduleSettingsSave();
-    const result = await api.listOllamaModels(host || undefined);
-    if (!result || !result.ok) {
-      throw new Error(result?.error || 'Unable to reach Ollama.');
-    }
-    state.local.ollamaModels = result.models || [];
-    updateLocalManifest(
-      {
-        host: host || state.localManifest?.host || '',
-        model: state.settings.ollamaModel || state.localManifest?.model || ''
-      },
-      { skipSummary: true }
-    );
-    renderOllamaModels();
-    renderAssistantSummary();
-    if (!silent) {
-      showToast('Ollama models refreshed.');
-    }
-  } catch (error) {
-    state.local.ollamaModels = [];
-    renderOllamaModels();
-    updateLocalManifest(
-      {
-        host: elements.ollamaHostField.value.trim() || state.localManifest?.host || ''
-      },
-      { skipSummary: false }
-    );
-    if (!silent) {
-      showToast(`Ollama: ${error.message}`);
-    }
-  } finally {
-    setOllamaBusy(false);
-  }
-}
-
-async function runOllamaGeneration() {
-  const model = elements.ollamaModelSelect.value || state.settings.ollamaModel;
-  const prompt = elements.ollamaPrompt.value.trim();
-  if (!model) {
-    showToast('Choose an Ollama model.');
-    return;
-  }
-  if (!prompt) {
-    showToast('Enter a prompt for Ollama.');
-    return;
-  }
-  try {
-    setOllamaBusy(true);
-    const host = elements.ollamaHostField.value.trim();
-    state.settings.ollamaHost = host;
-    scheduleSettingsSave();
-    const result = await api.generateOllama({ model, prompt, host: host || undefined });
-    if (!result || !result.ok) {
-      throw new Error(result?.error || 'Generation failed.');
-    }
-    const text = (result.text || '').trim();
-    state.local.ollamaOutput = text;
-    updateLocalManifest({ host: host || state.localManifest?.host || '', model });
-    renderOllamaOutput();
-    if (text) {
-      pushAttachment({
-        type: 'text',
-        title: `Ollama (${model})`,
-        meta: host ? `Host ${host}` : 'Local host',
-        body: text
-      });
-    }
-    showToast('Ollama response ready.');
-  } catch (error) {
-    showToast(`Ollama: ${error.message}`);
-  } finally {
-    setOllamaBusy(false);
-  }
-}
-
-function renderComfyStatus(message, isError = false) {
-  if (!elements.comfyStatus) return;
-  elements.comfyStatus.textContent = message;
-  elements.comfyStatus.classList.toggle('error', !!isError);
-}
-
-function setComfyBusy(isBusy) {
-  state.local.comfyBusy = isBusy;
-  if (elements.comfyRefresh) {
-    elements.comfyRefresh.disabled = isBusy;
-  }
-  if (elements.comfyRun) {
-    elements.comfyRun.disabled = isBusy;
-  }
-}
-
-function renderComfyGallery() {
-  if (!elements.comfyGallery) return;
-  elements.comfyGallery.innerHTML = '';
-  if (!state.local.comfyJobs.length) {
-    renderComfyStatus('No ComfyUI results yet.');
-    return;
-  }
-  renderComfyStatus(`Showing ${state.local.comfyJobs.length} recent ComfyUI jobs.`);
-  let assetCount = 0;
-  state.local.comfyJobs.forEach((job) => {
-    const assets = [...(job.images || []), ...(job.videos || [])];
-    if (!assets.length) return;
-    assets.forEach((asset) => {
-      const item = document.createElement('div');
-      item.className = 'gallery-item';
-      const isVideo = (asset.mime || '').startsWith('video/');
-      const media = document.createElement(isVideo ? 'video' : 'img');
-      media.src = asset.url;
-      if (isVideo) {
-        media.controls = true;
-      }
-      item.appendChild(media);
-      const caption = document.createElement('div');
-      const created = job.created ? new Date(job.created).toLocaleTimeString() : '';
-      caption.textContent = `${job.title || job.id}${created ? ` · ${created}` : ''}`;
-      item.appendChild(caption);
-      const meta = document.createElement('div');
-      meta.className = 'attachment-meta';
-      meta.textContent = asset.filename || '';
-      item.appendChild(meta);
-      const btn = document.createElement('button');
-      btn.className = 'secondary';
-      btn.textContent = 'Import to attachments';
-      btn.addEventListener('click', async () => {
-        await importComfyAsset(job, asset);
-      });
-      item.appendChild(btn);
-      elements.comfyGallery.appendChild(item);
-      assetCount += 1;
-    });
-  });
-  if (!assetCount) {
-    renderComfyStatus('Recent jobs do not contain downloadable assets yet.');
-  }
-}
-
-async function refreshComfyHistory({ silent = false } = {}) {
-  if (!elements.comfyHostField) return;
-  try {
-    setComfyBusy(true);
-    const host = elements.comfyHostField.value.trim();
-    state.settings.comfyHost = host;
-    scheduleSettingsSave();
-    const result = await api.listComfyJobs({ limit: 12, host });
-    if (!result || !result.ok) {
-      throw new Error(result?.error || 'Unable to reach ComfyUI.');
-    }
-    state.local.comfyJobs = result.jobs || [];
-    renderComfyGallery();
-    if (!silent) {
-      showToast('ComfyUI results updated.');
-    }
-    if (state.settings.comfyAutoImport) {
-      autoImportComfyResult();
-    }
-  } catch (error) {
-    state.local.comfyJobs = [];
-    renderComfyGallery();
-    renderComfyStatus(error.message || 'Unable to reach ComfyUI.', true);
-    if (!silent) {
-      showToast(`ComfyUI: ${error.message}`);
-    }
-  } finally {
-    setComfyBusy(false);
-  }
-}
-
-function buildComfyAssetKey(job, asset) {
-  return `${job.id || 'job'}:${asset.filename || 'asset'}:${asset.subfolder || ''}`;
-}
-
-async function importComfyAsset(job, asset) {
-  try {
-    const key = buildComfyAssetKey(job, asset);
-    if (state.local.comfyImported.has(key)) {
-      showToast('Asset already imported.');
-      return;
-    }
-    state.local.comfyImported.add(key);
-    const host = elements.comfyHostField ? elements.comfyHostField.value.trim() : '';
-    const result = await api.fetchComfyAsset({
-      filename: asset.filename,
-      subfolder: asset.subfolder,
-      type: asset.type,
-      mime: asset.mime,
-      host: host || undefined
-    });
-    if (!result || !result.ok) {
-      throw new Error(result?.error || 'Unable to fetch asset.');
-    }
-    const type = (asset.mime || '').startsWith('video/') ? 'video' : 'image';
-    pushAttachment({
-      type,
-      title: `${job.title || 'ComfyUI asset'}`,
-      meta: asset.filename || '',
-      body: `${job.title || job.id} · ${asset.filename || ''}`.trim(),
-      dataUrl: result.dataUrl,
-      assetKey: key
-    });
-    showToast('ComfyUI asset imported.');
-  } catch (error) {
-    const key = buildComfyAssetKey(job, asset);
-    if (state.local.comfyImported.has(key) && !state.attachments.some((att) => att.assetKey === key)) {
-      state.local.comfyImported.delete(key);
-    }
-    showToast(`ComfyUI: ${error.message}`);
-  }
-}
-
-function autoImportComfyResult() {
-  const jobs = state.local.comfyJobs || [];
-  for (const job of jobs) {
-    const assets = [...(job.images || []), ...(job.videos || [])];
-    for (const asset of assets) {
-      const key = buildComfyAssetKey(job, asset);
-      if (!state.local.comfyImported.has(key)) {
-        importComfyAsset(job, asset);
-        return;
-      }
-    }
-  }
-}
-
-async function startRoundTable() {
-  const targets = Array.from(state.selected);
-  if (!targets.length) {
-    showToast('Select assistants for the round-table.');
-    return;
-  }
-  const message = elements.composerInput.value.trim();
-  if (!message) {
-    showToast('Composer is empty.');
-    return;
-  }
-  const turns = Number(elements.roundTurns.value) || state.settings.roundTableTurns || 1;
-  if (state.settings.confirmBeforeSend) {
-    const ok = await confirmSend(`Start round-table with ${targets.length} assistants for ${turns} turns?`);
-    if (!ok) return;
-  }
-  state.round.active = true;
-  state.round.paused = false;
-  state.round.baseMessage = message;
-  state.round.turnsRemaining = turns;
-  state.round.queue = buildRoundQueue(targets);
-  state.round.lastTranscript = '';
-  appendLog(`Round-table started (${turns} turns).`);
-  processRoundStep();
-}
-
-elements.roundStart.addEventListener('click', startRoundTable);
-
-elements.roundPause.addEventListener('click', () => {
-  if (!state.round.active) return;
-  state.round.paused = true;
-  appendLog('Round-table paused.');
-});
-
-elements.roundResume.addEventListener('click', () => {
-  if (!state.round.active) return;
-  state.round.paused = false;
-  appendLog('Round-table resumed.');
-  processRoundStep();
-});
-
-elements.roundStop.addEventListener('click', stopRoundTable);
-
-elements.exportLogBtn.addEventListener('click', async () => {
-  const payload = state.log.join('\n');
-  const result = await api.exportLog(payload);
-  if (result && result.ok) {
-    showToast(`Log exported to ${result.path}`);
-  }
-});
-
-elements.refreshAgents.addEventListener('click', async () => {
-  for (const key of Object.keys(state.selectors)) {
-    await ensureAgent(key);
-  }
-  showToast('Agent status refreshed.');
-});
-
-function stopRoundTable() {
-  if (!state.round.active) return;
-  state.round.active = false;
-  state.round.paused = false;
-  state.round.queue = [];
-  state.round.turnsRemaining = 0;
-  if (state.round.timer) {
-    clearTimeout(state.round.timer);
-    state.round.timer = null;
-  }
-  appendLog('Round-table stopped.');
-}
-
-function buildRoundQueue(targets) {
-  const ordered = state.order.filter((key) => targets.includes(key));
-  return [...ordered];
-}
-
-async function processRoundStep() {
-  if (!state.round.active) {
-    return;
-  }
-  if (state.round.paused) {
-    state.round.timer = setTimeout(processRoundStep, 500);
-    return;
-  }
-  if (state.round.queue.length === 0) {
-    state.round.turnsRemaining -= 1;
-    if (state.round.turnsRemaining <= 0) {
-      appendLog('Round-table completed.');
-      stopRoundTable();
-      return;
-    }
-    state.round.queue = buildRoundQueue(Array.from(state.selected));
-  }
-  const key = state.round.queue.shift();
-  const message = buildRoundMessage(key);
-  try {
-    await ensureAgent(key);
-    await api.sendAgent({ key, text: message });
-    appendLog(`Round-table: sent turn to ${key}.`);
-    const messages = await api.readAgent(key);
-    state.round.lastTranscript = messages.join('\n');
-  } catch (error) {
-    appendLog(`Round-table: ${key} failed (${error.message || error}).`);
-    showToast(`${key} send failed during round-table.`);
-  }
-  state.round.timer = setTimeout(processRoundStep, 400);
-}
-
-function buildRoundMessage(key) {
-  const history = state.round.lastTranscript
-    ? `\n\nLatest transcript:\n${state.round.lastTranscript}`
-    : '';
-  return `${state.round.baseMessage}${history}`;
-}
-
-async function reloadSelectors() {
-  const payload = await api.bootstrap();
-  state.selectors = payload.selectors;
-  state.settings = payload.settings;
-  state.log = payload.log || [];
-  if (payload.defaults) {
-    state.defaultSelectors = payload.defaults;
-  }
-  if (payload.defaultKeys && payload.defaultKeys.length) {
-    state.defaultKeys = payload.defaultKeys;
-  }
-  state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : state.localManifest;
-  syncAssistantManifest(payload.order || state.order);
-  renderLog();
-  renderAgents();
-  renderSiteEditor();
-  hydrateSettings();
-  refreshOllamaModels({ silent: true });
-  refreshComfyHistory({ silent: true });
-  renderAttachments();
-  clearNewSiteForm();
-}
-
-function hydrateSettings() {
-  elements.confirmToggle.checked = !!state.settings.confirmBeforeSend;
-  elements.delayMin.value = state.settings.delayMin || 0;
-  elements.delayMax.value = state.settings.delayMax || 0;
-  elements.messageLimit.value = state.settings.messageLimit || 5;
-  elements.defaultTurns.value = state.settings.roundTableTurns || 2;
-  elements.copilotHost.value = state.settings.copilotHost || '';
-  elements.roundTurns.value = state.settings.roundTableTurns || 2;
-  elements.settingsComfyHost.value = state.settings.comfyHost || '';
-  elements.settingsComfyAuto.checked = !!state.settings.comfyAutoImport;
-  elements.settingsOllamaHost.value = state.settings.ollamaHost || '';
-  elements.settingsOllamaModel.value = state.settings.ollamaModel || '';
-  syncStudioHosts();
-}
-
-async function bootstrap() {
-  const payload = await api.bootstrap();
-  state.selectors = payload.selectors || {};
-  state.settings = payload.settings || {};
-  state.log = payload.log || [];
-  state.defaultSelectors = payload.defaults || state.defaultSelectors || {};
-  if (payload.defaultKeys && payload.defaultKeys.length) {
-    state.defaultKeys = payload.defaultKeys;
-  } else if (payload.defaults) {
-    state.defaultKeys = Object.keys(payload.defaults);
-  }
-  state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : null;
-  syncAssistantManifest(payload.order || []);
-  renderLog();
-  renderAgents();
-  renderSiteEditor();
-  hydrateSettings();
-  refreshOllamaModels({ silent: true });
-  refreshComfyHistory({ silent: true });
-  renderAttachments();
-  clearNewSiteForm();
-}
-
-api.onStatus((status) => {
-  state.agents[status.key] = { ...state.agents[status.key], ...status };
-  if (status.key === LOCAL_AGENT_KEY) {
-    updateLocalManifest({
-      host: status.host || state.localManifest?.host || state.settings.ollamaHost || '',
-      model: status.model || state.localManifest?.model || state.settings.ollamaModel || ''
-    });
-  }
-  renderAgents();
-});
-
-api.onStatusInit((entries) => {
-  entries.forEach((entry) => {
-    state.agents[entry.key] = { ...state.agents[entry.key], ...entry };
-    if (entry.key === LOCAL_AGENT_KEY) {
-      updateLocalManifest(
-        {
-          host: entry.host || state.localManifest?.host || state.settings.ollamaHost || '',
-          model: entry.model || state.localManifest?.model || state.settings.ollamaModel || ''
-        },
-        { skipSummary: true }
-      );
-    }
-  });
-  renderAssistantSummary();
-  renderAgents();
-});
-
-api.onLog((entry) => {
-  appendLog(entry);
-});
-
-api.onToast((message) => {
-  showToast(message);
-});
-
-api.onLocalMessage((payload) => {
-  if (!payload || !payload.response) {
-    return;
-  }
-  const timestamp = payload.timestamp ? new Date(payload.timestamp) : new Date();
-  const stamp = timestamp.toLocaleString();
-  const modelLabel = payload.model || state.settings.ollamaModel || 'local model';
-  updateLocalManifest({
-    model: modelLabel,
-    host: state.localManifest?.host || state.settings.ollamaHost || ''
-  });
-  pushAttachment({
-    type: 'text',
-    title: `Local (${modelLabel})`,
-    meta: `Generated ${stamp}`,
-    body: payload.response.trim()
-  });
-  showToast('Local model response added to attachments.');
-});
-
-window.addEventListener('beforeunload', () => {
-  stopRoundTable();
-});
-
-bootstrap();
-:renderer_js_END

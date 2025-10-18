@@ -5,10 +5,6 @@ import textwrap
 INSTALLER_NAME = 'OmniChat_install.bat'
 APP_ROOT = 'app'
 
-BLOCK_FILES = {
-    'renderer.js',
-}
-
 FILES = []
 for root, _, files in os.walk(APP_ROOT):
     for name in sorted(files):
@@ -30,7 +26,9 @@ def escape_line(line: str) -> str:
         ('>', '^>'),
         ('<', '^<'),
         ('(', '^('),
-        (')', '^)')
+        (')', '^)'),
+        ('%', '%%'),
+        ('!', '^!')
     ]
     for src, target in replacements:
         escaped = escaped.replace(src, target)
@@ -42,22 +40,8 @@ def make_label_name(rel_path: str) -> str:
     return f'write_{label}'
 
 
-block_data = []
-
-
 def build_file_section(rel_path: str, lines):
     label = make_label_name(rel_path)
-    if rel_path in BLOCK_FILES:
-        marker = label[len('write_'):]
-        block_data.append((marker, lines))
-        section_lines = [
-            f':{label}',
-            f'call :write_block "%~1" {marker}',
-            'exit /b'
-        ]
-        section = '\n'.join(section_lines)
-        return label, section
-
     body_lines = [f'  {escape_line(line)}' for line in lines] or ['  echo.']
     section_lines = [
         f':{label}',
@@ -281,34 +265,6 @@ exit /b
 ''').strip('\n')
 
 utilities = textwrap.dedent('''
-:write_block
-setlocal DisableDelayedExpansion
-set "TARGET=%~1"
-set "MARKER=%~2"
-call :emit_block %MARKER% > "%TARGET%"
-endlocal
-exit /b
-
-:emit_block
-setlocal DisableDelayedExpansion
-set "MARKER=%~1"
-set "BEGIN=%MARKER%_BEGIN"
-set "END=%MARKER%_END"
-set "COPY="
-for /f "usebackq tokens=1* delims=:" %%A in (`findstr /n "^" "%~f0"`) do (
-  if not defined COPY (
-    if "%%B"=="%BEGIN%" (
-      set "COPY=1"
-    )
-  ) else (
-    if "%%B"=="%END%" goto :emit_block_done
-    echo %%B
-  )
-)
-:emit_block_done
-endlocal
-exit /b
-
 :flatten_dir
 setlocal EnableDelayedExpansion
 set "TARGET_DIR=%~1"
@@ -365,10 +321,3 @@ with open(INSTALLER_NAME, 'w', encoding='utf-8') as output:
     output.write('\n\n')
     output.write(utilities)
     output.write('\n')
-
-    for marker, lines in block_data:
-        output.write('\n')
-        output.write(f':{marker}_BEGIN\n')
-        for line in lines:
-            output.write(f'{line}\n')
-        output.write(f':{marker}_END\n')
