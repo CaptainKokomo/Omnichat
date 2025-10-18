@@ -2,7 +2,9 @@ const api = window.omnichat;
 
 const elements = {
   agentList: document.getElementById('agentList'),
+  assistantSummary: document.getElementById('assistantSummary'),
   refreshAgents: document.getElementById('refreshAgents'),
+  manageAssistants: document.getElementById('manageAssistants'),
   composerInput: document.getElementById('composerInput'),
   broadcastBtn: document.getElementById('broadcastBtn'),
   singleTarget: document.getElementById('singleTarget'),
@@ -57,9 +59,12 @@ const elements = {
 };
 
 const DEFAULT_KEYS = ['chatgpt', 'claude', 'copilot', 'gemini'];
+const LOCAL_AGENT_KEY = 'local-ollama';
 
 const state = {
   selectors: {},
+  assistants: {},
+  localManifest: null,
   settings: {},
   order: [],
   selected: new Set(),
@@ -87,6 +92,104 @@ const state = {
 };
 
 let settingsSaveTimer = null;
+
+function getDefaultLocalManifest() {
+  return {
+    key: LOCAL_AGENT_KEY,
+    type: 'local',
+    displayName: 'Local (Ollama)',
+    host: state.settings.ollamaHost || '',
+    model: state.settings.ollamaModel || ''
+  };
+}
+
+function syncAssistantManifest(orderOverride) {
+  const manifest = {};
+  Object.entries(state.selectors || {}).forEach(([key, config]) => {
+    manifest[key] = {
+      key,
+      type: 'web',
+      displayName: config.displayName || key,
+      home: config.home || '',
+      patterns: config.patterns || []
+    };
+  });
+  const local = state.localManifest || getDefaultLocalManifest();
+  const normalizedLocal = {
+    ...local,
+    host: state.settings.ollamaHost || local.host || '',
+    model: state.settings.ollamaModel || local.model || ''
+  };
+  manifest[normalizedLocal.key] = { ...normalizedLocal };
+  state.assistants = manifest;
+  updateLocalManifest(normalizedLocal, { skipSummary: true });
+
+  const currentOrder = Array.isArray(orderOverride) ? orderOverride : state.order;
+  const nextOrder = [];
+  (currentOrder || []).forEach((key) => {
+    if (manifest[key] && !nextOrder.includes(key)) {
+      nextOrder.push(key);
+    }
+  });
+  Object.keys(manifest).forEach((key) => {
+    if (!nextOrder.includes(key)) {
+      nextOrder.push(key);
+    }
+  });
+  state.order = nextOrder;
+
+  const previousSelection = new Set(state.selected || []);
+  const nextSelection = new Set();
+  previousSelection.forEach((key) => {
+    if (manifest[key]) {
+      nextSelection.add(key);
+    }
+  });
+  if (!nextSelection.size) {
+    nextOrder.forEach((key) => nextSelection.add(key));
+  }
+  state.selected = nextSelection;
+  renderAssistantSummary();
+}
+
+function renderAssistantSummary() {
+  if (!elements.assistantSummary) return;
+  const assistants = Object.values(state.assistants || {});
+  const browserAssistants = assistants
+    .filter((item) => item.type === 'web')
+    .map((item) => item.displayName || item.key);
+  const local = assistants.find((item) => item.type === 'local');
+  let hostLabel = '';
+  if (local?.host) {
+    try {
+      hostLabel = new URL(local.host).host || local.host;
+    } catch (error) {
+      hostLabel = local.host;
+    }
+  }
+  const browserInfo = browserAssistants.length
+    ? `Browser: ${browserAssistants.join(', ')}`
+    : 'Browser: none linked';
+  const localInfo = local
+    ? `Local: ${local.model ? local.model : 'model not selected'}${hostLabel ? ` @ ${hostLabel}` : ''}`
+    : 'Local: unavailable';
+  elements.assistantSummary.textContent = `${browserInfo} · ${localInfo}`;
+}
+
+function updateLocalManifest(patch = {}, options = {}) {
+  const next = {
+    ...(state.localManifest || getDefaultLocalManifest()),
+    ...patch
+  };
+  state.localManifest = next;
+  if (!state.assistants) {
+    state.assistants = {};
+  }
+  state.assistants[LOCAL_AGENT_KEY] = { ...next };
+  if (!options.skipSummary) {
+    renderAssistantSummary();
+  }
+}
 
 function scheduleSettingsSave() {
   clearTimeout(settingsSaveTimer);
@@ -187,10 +290,14 @@ function buildAgentOrderControls(key) {
 function renderAgents() {
   elements.agentList.innerHTML = '';
   state.order.forEach((key) => {
+    const assistant = state.assistants[key];
+    if (!assistant) return;
     const config = state.selectors[key];
-    if (!config) return;
     const item = document.createElement('div');
     item.className = 'agent-item';
+    if (assistant.type === 'local') {
+      item.classList.add('local');
+    }
     if (state.selected.has(key)) {
       item.classList.add('active');
     }
@@ -198,7 +305,8 @@ function renderAgents() {
     const top = document.createElement('div');
     top.className = 'agent-top';
     const name = document.createElement('div');
-    name.innerHTML = `<strong>${config.displayName || key}</strong> <span class="badge">${key}</span>`;
+    const label = assistant.displayName || config?.displayName || key;
+    name.innerHTML = `<strong>${label}</strong> <span class="badge">${key}</span>`;
 
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
@@ -222,13 +330,27 @@ function renderAgents() {
     if (data && data.status) {
       statusBits.push(data.status);
     }
-    if (data && data.visible) {
+    if (data && data.visible && assistant.type !== 'local') {
       statusBits.push('visible');
     }
     if (data && data.error) {
       statusBits.push(`error: ${data.error}`);
     }
-    if (data && data.url) {
+    if (assistant.type === 'local') {
+      const host = (data && data.host) || state.settings.ollamaHost || '';
+      const model = (data && data.model) || state.settings.ollamaModel || '';
+      statusBits.push(model ? `model: ${model}` : 'model pending');
+      if (host) {
+        try {
+          const parsed = new URL(host);
+          statusBits.push(parsed.host || host);
+        } catch (error) {
+          statusBits.push(host);
+        }
+      } else {
+        statusBits.push('host offline');
+      }
+    } else if (data && data.url) {
       try {
         const url = new URL(data.url);
         statusBits.push(url.hostname);
@@ -241,59 +363,75 @@ function renderAgents() {
     const actions = document.createElement('div');
     actions.className = 'agent-actions';
 
-    const connectBtn = document.createElement('button');
-    connectBtn.className = 'secondary';
-    connectBtn.textContent = 'Connect';
-    connectBtn.addEventListener('click', async () => {
-      await api.connectAgent(key);
-    });
+    if (assistant.type === 'local') {
+      const studioBtn = document.createElement('button');
+      studioBtn.className = 'secondary';
+      studioBtn.textContent = 'Focus Studio';
+      studioBtn.addEventListener('click', () => {
+        document.getElementById('ollamaHostField')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast('Local Studio ready below.');
+      });
+      const refreshBtn = document.createElement('button');
+      refreshBtn.className = 'secondary';
+      refreshBtn.textContent = 'Refresh models';
+      refreshBtn.addEventListener('click', () => refreshOllamaModels());
+      actions.appendChild(studioBtn);
+      actions.appendChild(refreshBtn);
+    } else {
+      const connectBtn = document.createElement('button');
+      connectBtn.className = 'secondary';
+      connectBtn.textContent = 'Connect';
+      connectBtn.addEventListener('click', async () => {
+        await api.connectAgent(key);
+      });
 
-    const hideBtn = document.createElement('button');
-    hideBtn.className = 'secondary';
-    hideBtn.textContent = 'Hide';
-    hideBtn.addEventListener('click', async () => {
-      await api.hideAgent(key);
-    });
+      const hideBtn = document.createElement('button');
+      hideBtn.className = 'secondary';
+      hideBtn.textContent = 'Hide';
+      hideBtn.addEventListener('click', async () => {
+        await api.hideAgent(key);
+      });
 
-    const readBtn = document.createElement('button');
-    readBtn.className = 'secondary';
-    readBtn.textContent = 'Read';
-    readBtn.addEventListener('click', async () => {
-      await ensureAgent(key);
-      const messages = await api.readAgent(key);
-      appendLog(`${key}:\n${messages.join('\n')}`);
-    });
+      const readBtn = document.createElement('button');
+      readBtn.className = 'secondary';
+      readBtn.textContent = 'Read';
+      readBtn.addEventListener('click', async () => {
+        await ensureAgent(key);
+        const messages = await api.readAgent(key);
+        appendLog(`${key}:\n${messages.join('\n')}`);
+      });
 
-    actions.appendChild(connectBtn);
-    actions.appendChild(hideBtn);
-    actions.appendChild(readBtn);
+      actions.appendChild(connectBtn);
+      actions.appendChild(hideBtn);
+      actions.appendChild(readBtn);
+
+      if (!DEFAULT_KEYS.includes(key)) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'secondary';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => {
+          delete state.selectors[key];
+          state.order = state.order.filter((k) => k !== key);
+          state.selected.delete(key);
+          persistSelectors();
+          renderAgents();
+          renderSiteEditor();
+        });
+        actions.appendChild(removeBtn);
+      } else {
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'secondary';
+        resetBtn.textContent = 'Reset';
+        resetBtn.addEventListener('click', async () => {
+          await api.resetAgentSelectors(key);
+          await reloadSelectors();
+          renderSiteEditor();
+        });
+        actions.appendChild(resetBtn);
+      }
+    }
 
     const orderControls = buildAgentOrderControls(key);
-
-    if (!DEFAULT_KEYS.includes(key)) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'secondary';
-      removeBtn.textContent = 'Remove';
-      removeBtn.addEventListener('click', () => {
-        delete state.selectors[key];
-        state.order = state.order.filter((k) => k !== key);
-        state.selected.delete(key);
-        persistSelectors();
-        renderAgents();
-        renderSiteEditor();
-      });
-      actions.appendChild(removeBtn);
-    } else {
-      const resetBtn = document.createElement('button');
-      resetBtn.className = 'secondary';
-      resetBtn.textContent = 'Reset';
-      resetBtn.addEventListener('click', async () => {
-        await api.resetAgentSelectors(key);
-        await reloadSelectors();
-        renderSiteEditor();
-      });
-      actions.appendChild(resetBtn);
-    }
 
     item.appendChild(top);
     item.appendChild(status);
@@ -305,13 +443,13 @@ function renderAgents() {
 }
 
 function renderTargetDropdown() {
-  const selected = Array.from(state.order).filter((key) => state.selectors[key]);
+  const selected = Array.from(state.order).filter((key) => state.assistants[key]);
   elements.singleTarget.innerHTML = '';
   selected.forEach((key) => {
     const option = document.createElement('option');
-    const config = state.selectors[key];
+    const assistant = state.assistants[key];
     option.value = key;
-    option.textContent = config.displayName || key;
+    option.textContent = assistant.displayName || key;
     elements.singleTarget.appendChild(option);
   });
   const firstSelected = Array.from(state.selected)[0];
@@ -329,13 +467,13 @@ function renderTargetChips() {
   const fragment = document.createDocumentFragment();
   let hasAny = false;
   state.order.forEach((key) => {
-    if (!state.selectors[key]) return;
+    if (!state.assistants[key]) return;
     hasAny = true;
-    const config = state.selectors[key];
+    const assistant = state.assistants[key];
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'chip';
-    chip.textContent = config.displayName || key;
+    chip.textContent = assistant.displayName || key;
     if (state.selected.has(key)) {
       chip.classList.add('active');
     }
@@ -368,7 +506,7 @@ function updateTargetControls() {
 function renderSiteEditor() {
   elements.siteEditor.innerHTML = '';
   const orderedKeys = state.order.length
-    ? [...state.order]
+    ? state.order.filter((key) => state.selectors[key])
     : Object.keys(state.selectors);
   const extras = Object.keys(state.selectors).filter((key) => !orderedKeys.includes(key));
   const keys = [...orderedKeys, ...extras];
@@ -478,13 +616,8 @@ function collectSelectorsFromEditor() {
 async function persistSelectors() {
   const next = collectSelectorsFromEditor();
   state.selectors = next;
-  state.order = state.order.filter((key) => next[key]);
-  Object.keys(next).forEach((key) => {
-    if (!state.order.includes(key)) {
-      state.order.push(key);
-    }
-  });
   await api.saveSelectors(next);
+  syncAssistantManifest();
   renderAgents();
 }
 
@@ -510,6 +643,10 @@ async function persistSettings() {
   const previousComfyAuto = state.settings.comfyAutoImport;
   state.settings = { ...state.settings, ...next };
   await api.saveSettings(state.settings);
+  updateLocalManifest({
+    host: state.settings.ollamaHost || '',
+    model: state.settings.ollamaModel || state.localManifest?.model || ''
+  });
   elements.roundTurns.value = state.settings.roundTableTurns;
   syncStudioHosts();
   if (next.ollamaHost !== previousOllamaHost) {
@@ -549,6 +686,12 @@ async function closeSettingsModal(save = true) {
 elements.openSettings.addEventListener('click', () => {
   openSettingsModal();
 });
+
+if (elements.manageAssistants) {
+  elements.manageAssistants.addEventListener('click', () => {
+    openSettingsModal();
+  });
+}
 
 elements.closeSettings.addEventListener('click', async () => {
   await closeSettingsModal(true);
@@ -698,7 +841,7 @@ function getPrimaryAgentKey() {
   if (state.selected.size > 0) {
     return Array.from(state.selected)[0];
   }
-  const keys = Object.keys(state.selectors);
+  const keys = state.order.filter((key) => state.assistants[key]);
   return keys[0];
 }
 
@@ -784,6 +927,7 @@ if (elements.ollamaModelSelect) {
     const value = elements.ollamaModelSelect.value;
     state.settings.ollamaModel = value;
     scheduleSettingsSave();
+    updateLocalManifest({ model: value });
   });
 }
 
@@ -791,6 +935,7 @@ if (elements.ollamaHostField) {
   elements.ollamaHostField.addEventListener('change', () => {
     state.settings.ollamaHost = elements.ollamaHostField.value.trim();
     scheduleSettingsSave();
+    updateLocalManifest({ host: state.settings.ollamaHost });
     state.local.ollamaOutput = '';
     renderOllamaOutput();
     refreshOllamaModels({ silent: true });
@@ -919,9 +1064,17 @@ function syncStudioHosts() {
   if (elements.comfyHostField) {
     elements.comfyHostField.value = state.settings.comfyHost || elements.comfyHostField.placeholder || '';
   }
+  updateLocalManifest(
+    {
+      host: state.settings.ollamaHost || state.localManifest?.host || '',
+      model: state.settings.ollamaModel || state.localManifest?.model || ''
+    },
+    { skipSummary: true }
+  );
   renderOllamaModels();
   renderOllamaOutput();
   renderComfyGallery();
+  renderAssistantSummary();
 }
 
 function renderOllamaModels() {
@@ -983,13 +1136,27 @@ async function refreshOllamaModels({ silent = false } = {}) {
       throw new Error(result?.error || 'Unable to reach Ollama.');
     }
     state.local.ollamaModels = result.models || [];
+    updateLocalManifest(
+      {
+        host: host || state.localManifest?.host || '',
+        model: state.settings.ollamaModel || state.localManifest?.model || ''
+      },
+      { skipSummary: true }
+    );
     renderOllamaModels();
+    renderAssistantSummary();
     if (!silent) {
       showToast('Ollama models refreshed.');
     }
   } catch (error) {
     state.local.ollamaModels = [];
     renderOllamaModels();
+    updateLocalManifest(
+      {
+        host: elements.ollamaHostField.value.trim() || state.localManifest?.host || ''
+      },
+      { skipSummary: false }
+    );
     if (!silent) {
       showToast(`Ollama: ${error.message}`);
     }
@@ -1020,6 +1187,7 @@ async function runOllamaGeneration() {
     }
     const text = (result.text || '').trim();
     state.local.ollamaOutput = text;
+    updateLocalManifest({ host: host || state.localManifest?.host || '', model });
     renderOllamaOutput();
     if (text) {
       pushAttachment({
@@ -1306,9 +1474,8 @@ async function reloadSelectors() {
   state.selectors = payload.selectors;
   state.settings = payload.settings;
   state.log = payload.log || [];
-  if (!state.order.length) {
-    state.order = Object.keys(state.selectors);
-  }
+  state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : state.localManifest;
+  syncAssistantManifest(payload.order || state.order);
   renderLog();
   renderAgents();
   renderSiteEditor();
@@ -1338,8 +1505,8 @@ async function bootstrap() {
   state.selectors = payload.selectors || {};
   state.settings = payload.settings || {};
   state.log = payload.log || [];
-  state.order = Object.keys(state.selectors);
-  state.order.forEach((key) => state.selected.add(key));
+  state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : null;
+  syncAssistantManifest(payload.order || []);
   renderLog();
   renderAgents();
   renderSiteEditor();
@@ -1351,13 +1518,29 @@ async function bootstrap() {
 
 api.onStatus((status) => {
   state.agents[status.key] = { ...state.agents[status.key], ...status };
+  if (status.key === LOCAL_AGENT_KEY) {
+    updateLocalManifest({
+      host: status.host || state.localManifest?.host || state.settings.ollamaHost || '',
+      model: status.model || state.localManifest?.model || state.settings.ollamaModel || ''
+    });
+  }
   renderAgents();
 });
 
 api.onStatusInit((entries) => {
   entries.forEach((entry) => {
     state.agents[entry.key] = { ...state.agents[entry.key], ...entry };
+    if (entry.key === LOCAL_AGENT_KEY) {
+      updateLocalManifest(
+        {
+          host: entry.host || state.localManifest?.host || state.settings.ollamaHost || '',
+          model: entry.model || state.localManifest?.model || state.settings.ollamaModel || ''
+        },
+        { skipSummary: true }
+      );
+    }
   });
+  renderAssistantSummary();
   renderAgents();
 });
 
@@ -1367,6 +1550,26 @@ api.onLog((entry) => {
 
 api.onToast((message) => {
   showToast(message);
+});
+
+api.onLocalMessage((payload) => {
+  if (!payload || !payload.response) {
+    return;
+  }
+  const timestamp = payload.timestamp ? new Date(payload.timestamp) : new Date();
+  const stamp = timestamp.toLocaleString();
+  const modelLabel = payload.model || state.settings.ollamaModel || 'local model';
+  updateLocalManifest({
+    model: modelLabel,
+    host: state.localManifest?.host || state.settings.ollamaHost || ''
+  });
+  pushAttachment({
+    type: 'text',
+    title: `Local (${modelLabel})`,
+    meta: `Generated ${stamp}`,
+    body: payload.response.trim()
+  });
+  showToast('Local model response added to attachments.');
 });
 
 window.addEventListener('beforeunload', () => {

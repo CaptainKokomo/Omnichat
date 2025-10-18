@@ -10,8 +10,14 @@
   <div id="app">
     <aside class="pane pane-left">
       <header>
-        <h1>OmniChat</h1>
-        <button id="refreshAgents" class="secondary">Refresh</button>
+        <div class="title-block">
+          <h1>OmniChat</h1>
+          <p id="assistantSummary" class="subtitle">Loading assistants…</p>
+        </div>
+        <div class="header-actions">
+          <button id="refreshAgents" class="secondary">Refresh</button>
+          <button id="manageAssistants" class="secondary">Manage</button>
+        </div>
       </header>
       <div id="agentList" class="list"></div>
     </aside>

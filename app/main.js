@@ -23,6 +23,13 @@ const DEFAULT_SETTINGS = {
   ollamaModel: ''
 };
 
+const LOCAL_AGENT_KEY = 'local-ollama';
+const LOCAL_AGENT_MANIFEST = {
+  key: LOCAL_AGENT_KEY,
+  displayName: 'Local (Ollama)',
+  type: 'local'
+};
+
 const DEFAULT_SELECTORS = {
   chatgpt: {
     displayName: 'ChatGPT',
@@ -406,8 +413,13 @@ const logBuffer = [];
 const appState = {
   mainWindow: null,
   selectors: JSON.parse(JSON.stringify(DEFAULT_SELECTORS)),
-  settings: { ...DEFAULT_SETTINGS }
+  settings: { ...DEFAULT_SETTINGS },
+  localHistory: []
 };
+
+function isLocalAgent(key) {
+  return key === LOCAL_AGENT_KEY;
+}
 
 function ensureDirectories() {
   [INSTALL_ROOT, CONFIG_ROOT, LOG_ROOT].forEach((dir) => {
@@ -432,16 +444,19 @@ function ensureFirstRunGuide() {
 
 function updateAgentStatus(key, patch) {
   const selector = appState.selectors[key] || {};
+  const baseDisplayName = selector.displayName || patch?.displayName || LOCAL_AGENT_MANIFEST.displayName || key;
   const current = agentStatus.get(key) || {
     key,
-    displayName: selector.displayName || key,
+    displayName: baseDisplayName,
     status: 'idle',
-    visible: false
+    visible: false,
+    type: isLocalAgent(key) ? 'local' : 'web'
   };
   const next = {
     ...current,
     ...patch,
-    displayName: selector.displayName || current.displayName || key
+    displayName: patch?.displayName || selector.displayName || current.displayName || key,
+    type: patch?.type || current.type || (isLocalAgent(key) ? 'local' : 'web')
   };
   agentStatus.set(key, next);
   if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
@@ -449,12 +464,27 @@ function updateAgentStatus(key, patch) {
   }
 }
 
+function ensureLocalAgentStatus(patch = {}) {
+  const host = appState.settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
+  const model = appState.settings.ollamaModel || '';
+  updateAgentStatus(LOCAL_AGENT_KEY, {
+    displayName: LOCAL_AGENT_MANIFEST.displayName,
+    type: 'local',
+    visible: true,
+    status: patch.status || agentStatus.get(LOCAL_AGENT_KEY)?.status || 'idle',
+    host,
+    model,
+    ...patch
+  });
+}
+
 function broadcastAgentSnapshot() {
   const payload = Array.from(agentStatus.values()).map((entry) => {
     const selector = appState.selectors[entry.key] || {};
     return {
       ...entry,
-      displayName: selector.displayName || entry.displayName || entry.key
+      displayName: selector.displayName || entry.displayName || entry.key,
+      type: entry.type || (isLocalAgent(entry.key) ? 'local' : 'web')
     };
   });
   if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
@@ -483,7 +513,37 @@ function refreshAgentSessions() {
     }
   }
 
+  ensureLocalAgentStatus();
   broadcastAgentSnapshot();
+}
+
+function getAssistantManifest() {
+  const selectors = appState.selectors || {};
+  const manifest = {};
+  Object.entries(selectors).forEach(([key, value]) => {
+    manifest[key] = {
+      key,
+      type: 'web',
+      displayName: value.displayName || key,
+      home: value.home || '',
+      patterns: value.patterns || []
+    };
+  });
+  manifest[LOCAL_AGENT_KEY] = {
+    ...LOCAL_AGENT_MANIFEST,
+    host: appState.settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost,
+    model: appState.settings.ollamaModel || ''
+  };
+  return manifest;
+}
+
+function sanitizeLocalHistory() {
+  if (!Array.isArray(appState.localHistory)) {
+    appState.localHistory = [];
+  }
+  if (appState.localHistory.length > 100) {
+    appState.localHistory = appState.localHistory.slice(-100);
+  }
 }
 
 function getAgentSession(key) {
@@ -544,6 +604,9 @@ function recordLog(entry) {
 }
 
 async function sendToAgent(key, text) {
+  if (isLocalAgent(key)) {
+    throw new Error('local_agent');
+  }
   const session = getAgentSession(key);
   const min = Number(appState.settings.delayMin) || DEFAULT_SETTINGS.delayMin;
   const max = Number(appState.settings.delayMax) || min;
@@ -569,6 +632,10 @@ async function sendToAgent(key, text) {
 }
 
 async function readMessages(key) {
+  if (isLocalAgent(key)) {
+    sanitizeLocalHistory();
+    return appState.localHistory.map((item) => `${item.direction === 'out' ? 'You' : item.model || 'Local'}: ${item.text}`);
+  }
   try {
     const session = getAgentSession(key);
     const result = await session.runTask('readMessages', { limit: appState.settings.messageLimit });
@@ -776,10 +843,13 @@ ipcMain.handle('app:bootstrap', async () => {
   ensureFirstRunGuide();
   appState.selectors = selectorStore.load();
   appState.settings = settingsStore.load();
+  ensureLocalAgentStatus();
   refreshAgentSessions();
   return {
     selectors: appState.selectors,
     settings: appState.settings,
+    assistants: getAssistantManifest(),
+    order: [...Object.keys(appState.selectors), LOCAL_AGENT_KEY],
     log: logBuffer.slice(-200)
   };
 });
@@ -794,6 +864,7 @@ ipcMain.handle('selectors:save', async (_event, payload) => {
 ipcMain.handle('settings:save', async (_event, payload) => {
   appState.settings = { ...appState.settings, ...(payload || {}) };
   settingsStore.save(appState.settings);
+  ensureLocalAgentStatus();
   return { ok: true };
 });
 
@@ -849,18 +920,30 @@ ipcMain.handle('config:openFolder', async () => {
 });
 
 ipcMain.handle('agent:ensure', async (_event, key) => {
+  if (isLocalAgent(key)) {
+    ensureLocalAgentStatus({ status: 'ready' });
+    return agentStatus.get(key) || { key: LOCAL_AGENT_KEY, type: 'local' };
+  }
   const session = getAgentSession(key);
   await session.ensureWindow();
   return agentStatus.get(key) || { key };
 });
 
 ipcMain.handle('agent:connect', async (_event, key) => {
+  if (isLocalAgent(key)) {
+    ensureLocalAgentStatus({ status: 'ready' });
+    return true;
+  }
   const session = getAgentSession(key);
   await session.show();
   return true;
 });
 
 ipcMain.handle('agent:hide', async (_event, key) => {
+  if (isLocalAgent(key)) {
+    ensureLocalAgentStatus({ visible: false });
+    return true;
+  }
   if (agentSessions.has(key)) {
     agentSessions.get(key).hide();
   }
@@ -873,6 +956,52 @@ ipcMain.handle('agent:read', async (_event, key) => {
 
 ipcMain.handle('agent:send', async (_event, payload) => {
   const { key, text } = payload || {};
+  if (isLocalAgent(key)) {
+    const prompt = text || '';
+    if (!prompt.trim()) {
+      throw new Error('empty_prompt');
+    }
+    try {
+      appState.localHistory.push({ direction: 'out', text: prompt, timestamp: Date.now() });
+      sanitizeLocalHistory();
+      const existingModel = appState.settings.ollamaModel;
+      let model = existingModel;
+      if (!model) {
+        const models = await listOllamaModels();
+        if (!models.length) {
+          throw new Error('no_local_models');
+        }
+        model = models[0];
+        appState.settings.ollamaModel = model;
+        settingsStore.save(appState.settings);
+        ensureLocalAgentStatus({ model });
+      }
+      ensureLocalAgentStatus({ status: 'generating' });
+      recordLog(`${key}: generating with ${model}`);
+      const response = await generateWithOllama({ model, prompt });
+      ensureLocalAgentStatus({ status: 'ready', model });
+      appState.localHistory.push({ direction: 'in', text: response, model, timestamp: Date.now() });
+      sanitizeLocalHistory();
+      recordLog(`${key}: ${response.slice(0, 140)}${response.length > 140 ? '…' : ''}`);
+      if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+        appState.mainWindow.webContents.send('agent:localMessage', {
+          key,
+          model,
+          prompt,
+          response,
+          timestamp: Date.now()
+        });
+      }
+      return { ok: true, response, model };
+    } catch (error) {
+      ensureLocalAgentStatus({ status: 'error', error: error.message || String(error) });
+      recordLog(`${key}: generation failed (${error.message || error})`);
+      if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+        appState.mainWindow.webContents.send('app:toast', `Local model: ${error.message || error}`);
+      }
+      throw error;
+    }
+  }
   await getAgentSession(key).ensureWindow();
   const messages = await readMessages(key);
   await sendToAgent(key, text || '');

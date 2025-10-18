@@ -41,6 +41,24 @@ body.modal-open {
   justify-content: space-between;
 }
 
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .pane header h1 {
   margin: 0;
   font-size: 22px;
@@ -61,6 +79,16 @@ body.modal-open {
   flex-direction: column;
   gap: 8px;
   background: #f8fafc;
+}
+
+.agent-item.local {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.agent-item.local .badge {
+  background: #fed7aa;
+  color: #9a3412;
 }
 
 .agent-item.active {

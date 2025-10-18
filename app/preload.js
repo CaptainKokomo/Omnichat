@@ -24,5 +24,6 @@ contextBridge.exposeInMainWorld('omnichat', {
   onStatus: (handler) => ipcRenderer.on('agent:status', (_event, data) => handler(data)),
   onStatusInit: (handler) => ipcRenderer.on('agent:status:init', (_event, data) => handler(data)),
   onLog: (handler) => ipcRenderer.on('log:push', (_event, data) => handler(data)),
-  onToast: (handler) => ipcRenderer.on('app:toast', (_event, message) => handler(message))
+  onToast: (handler) => ipcRenderer.on('app:toast', (_event, message) => handler(message)),
+  onLocalMessage: (handler) => ipcRenderer.on('agent:localMessage', (_event, data) => handler(data))
 });
