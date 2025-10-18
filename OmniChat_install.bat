@@ -331,8 +331,42 @@ setlocal DisableDelayedExpansion
   echo       ^</section^>
   echo       ^<section^>
   echo         ^<h3^>Browser Assistants^</h3^>
+  echo         ^<p class="section-help"^>Toggle or edit any assistant below. Use the guided form to add new browser UIs without touching JSON.^</p^>
+  echo         ^<div class="add-site-form"^>
+  echo           ^<h4^>Add new assistant^</h4^>
+  echo           ^<div class="grid"^>
+  echo             ^<label^>Assistant name
+  echo               ^<input type="text" id="newSiteName" placeholder="Perplexity" /^>
+  echo             ^</label^>
+  echo             ^<label^>Assistant key
+  echo               ^<input type="text" id="newSiteKey" placeholder="perplexity" /^>
+  echo             ^</label^>
+  echo             ^<label^>Start with template
+  echo               ^<select id="newSiteTemplate"^>^</select^>
+  echo             ^</label^>
+  echo             ^<label^>Home URL
+  echo               ^<input type="text" id="newSiteHome" placeholder="https://example.com/" /^>
+  echo             ^</label^>
+  echo             ^<label^>URL patterns ^(one per line^)
+  echo               ^<textarea id="newSitePatterns" rows="3" placeholder="https://example.com/*"^>^</textarea^>
+  echo             ^</label^>
+  echo             ^<label^>Input selectors
+  echo               ^<textarea id="newSiteInput" rows="3" placeholder="textarea^&#10;div[contenteditable='true']"^>^</textarea^>
+  echo             ^</label^>
+  echo             ^<label^>Send button selectors
+  echo               ^<textarea id="newSiteSend" rows="3" placeholder="button[type='submit']"^>^</textarea^>
+  echo             ^</label^>
+  echo             ^<label^>Message container selectors
+  echo               ^<textarea id="newSiteMessages" rows="3" placeholder="main^&#10;div[class*='conversation']"^>^</textarea^>
+  echo             ^</label^>
+  echo           ^</div^>
+  echo           ^<div class="add-site-actions"^>
+  echo             ^<button id="addSiteBtn" class="primary" type="button"^>Create Assistant^</button^>
+  echo             ^<button id="resetSiteForm" class="secondary" type="button"^>Clear Form^</button^>
+  echo           ^</div^>
+  echo           ^<p class="section-hint"^>Keys must use letters, numbers, or hyphen. OmniChat copies the template selectors if you pick one, so you only need to tweak the pieces that differ.^</p^>
+  echo         ^</div^>
   echo         ^<div id="siteEditor"^>^</div^>
-  echo         ^<button id="addSiteBtn" class="secondary"^>Add Site^</button^>
   echo       ^</section^>
   echo       ^<section^>
   echo         ^<h3^>Utilities^</h3^>
@@ -1207,6 +1241,8 @@ setlocal DisableDelayedExpansion
   echo     selectors: appState.selectors,
   echo     settings: appState.settings,
   echo     assistants: getAssistantManifest^(^),
+  echo     defaults: JSON.parse^(JSON.stringify^(DEFAULT_SELECTORS^)^),
+  echo     defaultKeys: Object.keys^(DEFAULT_SELECTORS^),
   echo     order: [...Object.keys^(appState.selectors^), LOCAL_AGENT_KEY],
   echo     log: logBuffer.slice^(-200^)
   echo   };
@@ -1869,6 +1905,18 @@ setlocal DisableDelayedExpansion
   echo   padding-top: 12px;
   echo }
   echo.
+  echo .settings .section-help {
+  echo   margin: 0 0 12px;
+  echo   color: #475569;
+  echo   font-size: 14px;
+  echo }
+  echo.
+  echo .settings .section-hint {
+  echo   margin: 12px 0 0;
+  echo   color: #64748b;
+  echo   font-size: 13px;
+  echo }
+  echo.
   echo .settings h3 {
   echo   margin-top: 0;
   echo }
@@ -1884,6 +1932,31 @@ setlocal DisableDelayedExpansion
   echo   flex-direction: column;
   echo   gap: 6px;
   echo   font-size: 14px;
+  echo }
+  echo.
+  echo .add-site-form {
+  echo   background: #f8fafc;
+  echo   border: 1px solid #e2e8f0;
+  echo   border-radius: 10px;
+  echo   padding: 16px;
+  echo   display: flex;
+  echo   flex-direction: column;
+  echo   gap: 12px;
+  echo   margin-bottom: 20px;
+  echo }
+  echo.
+  echo .add-site-form h4 {
+  echo   margin: 0;
+  echo }
+  echo.
+  echo .add-site-actions {
+  echo   display: flex;
+  echo   gap: 12px;
+  echo   flex-wrap: wrap;
+  echo }
+  echo.
+  echo .add-site-actions button {
+  echo   min-width: 160px;
   echo }
   echo.
   echo .toast {
@@ -2338,6 +2411,15 @@ const elements = {
   confirmOk: document.getElementById('confirmOk'),
   toast: document.getElementById('toast'),
   siteEditor: document.getElementById('siteEditor'),
+  resetSiteForm: document.getElementById('resetSiteForm'),
+  newSiteName: document.getElementById('newSiteName'),
+  newSiteKey: document.getElementById('newSiteKey'),
+  newSiteTemplate: document.getElementById('newSiteTemplate'),
+  newSiteHome: document.getElementById('newSiteHome'),
+  newSitePatterns: document.getElementById('newSitePatterns'),
+  newSiteInput: document.getElementById('newSiteInput'),
+  newSiteSend: document.getElementById('newSiteSend'),
+  newSiteMessages: document.getElementById('newSiteMessages'),
   addSiteBtn: document.getElementById('addSiteBtn'),
   confirmToggle: document.getElementById('confirmToggle'),
   delayMin: document.getElementById('delayMin'),
@@ -2366,15 +2448,17 @@ const elements = {
   comfyGallery: document.getElementById('comfyGallery')
 };
 
-const DEFAULT_KEYS = ['chatgpt', 'claude', 'copilot', 'gemini'];
+const DEFAULT_KEY_FALLBACK = ['chatgpt', 'claude', 'copilot', 'gemini'];
 const LOCAL_AGENT_KEY = 'local-ollama';
 
 const state = {
   selectors: {},
+  defaultSelectors: {},
   assistants: {},
   localManifest: null,
   settings: {},
   order: [],
+  defaultKeys: [...DEFAULT_KEY_FALLBACK],
   selected: new Set(),
   agents: {},
   log: [],
@@ -2400,6 +2484,11 @@ const state = {
 };
 
 let settingsSaveTimer = null;
+
+function isDefaultKey(key) {
+  const defaults = state.defaultKeys && state.defaultKeys.length ? state.defaultKeys : DEFAULT_KEY_FALLBACK;
+  return defaults.includes(key);
+}
 
 function getDefaultLocalManifest() {
   return {
@@ -2713,7 +2802,7 @@ function renderAgents() {
       actions.appendChild(hideBtn);
       actions.appendChild(readBtn);
 
-      if (!DEFAULT_KEYS.includes(key)) {
+      if (!isDefaultKey(key)) {
         const removeBtn = document.createElement('button');
         removeBtn.className = 'secondary';
         removeBtn.textContent = 'Remove';
@@ -2863,7 +2952,7 @@ function renderSiteEditor() {
 
     actions.appendChild(saveBtn);
 
-    if (!DEFAULT_KEYS.includes(key)) {
+    if (!isDefaultKey(key)) {
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'secondary';
       deleteBtn.textContent = 'Delete';
@@ -2880,6 +2969,157 @@ function renderSiteEditor() {
     row.appendChild(actions);
     elements.siteEditor.appendChild(row);
   });
+  populateTemplateSelect();
+}
+
+function slugifyKey(value = '') {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+}
+
+function clearNewSiteForm() {
+  if (!elements.newSiteName) return;
+  elements.newSiteName.value = '';
+  if (elements.newSiteHome) elements.newSiteHome.value = '';
+  if (elements.newSitePatterns) elements.newSitePatterns.value = '';
+  if (elements.newSiteInput) elements.newSiteInput.value = '';
+  if (elements.newSiteSend) elements.newSiteSend.value = '';
+  if (elements.newSiteMessages) elements.newSiteMessages.value = '';
+  if (elements.newSiteTemplate) elements.newSiteTemplate.value = '';
+  if (elements.newSiteKey) {
+    elements.newSiteKey.value = '';
+    delete elements.newSiteKey.dataset.manual;
+  }
+}
+
+function populateTemplateSelect() {
+  if (!elements.newSiteTemplate) return;
+  const currentValue = elements.newSiteTemplate.value;
+  elements.newSiteTemplate.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Choose template…';
+  elements.newSiteTemplate.appendChild(placeholder);
+
+  const seen = new Set();
+  const addOption = (value, label) => {
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    elements.newSiteTemplate.appendChild(option);
+  };
+
+  Object.entries(state.defaultSelectors || {}).forEach(([key, config]) => {
+    addOption(`default:${key}`, `${config.displayName || key} (default)`);
+  });
+  Object.entries(state.selectors || {}).forEach(([key, config]) => {
+    addOption(`current:${key}`, `${config.displayName || key} (current)`);
+  });
+
+  if (currentValue && seen.has(currentValue)) {
+    elements.newSiteTemplate.value = currentValue;
+  }
+}
+
+function applyTemplateSelection(value) {
+  if (!value || !elements.newSiteKey) return;
+  const [scope, key] = value.split(':');
+  if (!key) return;
+  let template = null;
+  if (scope === 'default') {
+    template = state.defaultSelectors?.[key] || null;
+  } else if (scope === 'current') {
+    template = state.selectors?.[key] || null;
+  }
+  if (!template) return;
+  const displayName = template.displayName || key;
+  if (!elements.newSiteName.value.trim()) {
+    elements.newSiteName.value = displayName;
+  }
+  if (!elements.newSiteKey.dataset.manual || !elements.newSiteKey.value.trim()) {
+    elements.newSiteKey.value = slugifyKey(elements.newSiteName.value || displayName);
+  }
+  elements.newSiteHome.value = template.home || '';
+  elements.newSitePatterns.value = (template.patterns || []).join('\n');
+  elements.newSiteInput.value = (template.input || []).join('\n');
+  elements.newSiteSend.value = (template.sendButton || []).join('\n');
+  elements.newSiteMessages.value = (template.messageContainer || []).join('\n');
+}
+
+function collectNewSiteForm() {
+  if (!elements.newSiteName) return null;
+  const name = elements.newSiteName.value.trim();
+  let key = elements.newSiteKey.value.trim().toLowerCase();
+  if (!key) {
+    key = slugifyKey(name);
+    elements.newSiteKey.value = key;
+  }
+  if (!key) {
+    showToast('Enter an assistant key.');
+    return null;
+  }
+  if (!/^[a-z0-9\-]+$/.test(key)) {
+    showToast('Key must use letters, numbers, or hyphen.');
+    return null;
+  }
+  if (state.selectors[key]) {
+    showToast('That key already exists.');
+    return null;
+  }
+  const home = elements.newSiteHome.value.trim();
+  const patterns = elements.newSitePatterns.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const input = elements.newSiteInput.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const sendButton = elements.newSiteSend.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const messageContainer = elements.newSiteMessages.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!patterns.length && home) {
+    patterns.push(home);
+  }
+  if (!patterns.length) {
+    showToast('Provide at least one URL pattern.');
+    return null;
+  }
+  if (!input.length) {
+    showToast('Provide at least one input selector.');
+    return null;
+  }
+  if (!sendButton.length) {
+    showToast('Provide at least one send button selector.');
+    return null;
+  }
+  if (!messageContainer.length) {
+    showToast('Provide at least one message container selector.');
+    return null;
+  }
+
+  const config = {
+    displayName: name || key,
+    home,
+    patterns,
+    input,
+    sendButton,
+    messageContainer
+  };
+
+  return { key, config };
 }
 
 function collectSelectorsFromEditor() {
@@ -3017,31 +3257,59 @@ document.addEventListener('keydown', async (event) => {
   }
 });
 
-elements.addSiteBtn.addEventListener('click', () => {
-  let key = prompt('Enter a unique key (letters, numbers, hyphen):');
-  if (!key) return;
-  key = key.trim().toLowerCase();
-  if (!/^[a-z0-9\-]+$/.test(key)) {
-    showToast('Key must contain only letters, numbers, or hyphen.');
-    return;
-  }
-  if (state.selectors[key]) {
-    showToast('Key already exists.');
-    return;
-  }
-  state.selectors[key] = {
-    displayName: key,
-    home: '',
-    patterns: [],
-    input: [],
-    sendButton: [],
-    messageContainer: []
-  };
-  state.order.push(key);
-  state.selected.add(key);
-  renderSiteEditor();
-  renderAgents();
-});
+if (elements.addSiteBtn) {
+  elements.addSiteBtn.addEventListener('click', async () => {
+    const entry = collectNewSiteForm();
+    if (!entry) {
+      return;
+    }
+    const { key, config } = entry;
+    state.selectors[key] = config;
+    if (!state.order.includes(key)) {
+      state.order.push(key);
+    }
+    state.selected.add(key);
+    await api.saveSelectors(state.selectors);
+    syncAssistantManifest();
+    renderAgents();
+    renderSiteEditor();
+    showToast(`${config.displayName || key} added.`);
+    clearNewSiteForm();
+  });
+}
+
+if (elements.resetSiteForm) {
+  elements.resetSiteForm.addEventListener('click', () => {
+    clearNewSiteForm();
+  });
+}
+
+if (elements.newSiteTemplate) {
+  elements.newSiteTemplate.addEventListener('change', () => {
+    applyTemplateSelection(elements.newSiteTemplate.value);
+  });
+}
+
+if (elements.newSiteName && elements.newSiteKey) {
+  elements.newSiteName.addEventListener('input', () => {
+    if (!elements.newSiteKey.dataset.manual) {
+      elements.newSiteKey.value = slugifyKey(elements.newSiteName.value);
+    }
+  });
+}
+
+if (elements.newSiteKey) {
+  elements.newSiteKey.addEventListener('input', () => {
+    if (elements.newSiteKey.value.trim()) {
+      elements.newSiteKey.dataset.manual = '1';
+    } else {
+      delete elements.newSiteKey.dataset.manual;
+      if (elements.newSiteName && elements.newSiteName.value.trim()) {
+        elements.newSiteKey.value = slugifyKey(elements.newSiteName.value);
+      }
+    }
+  });
+}
 
 if (elements.importSelectorsBtn) {
   elements.importSelectorsBtn.addEventListener('click', async () => {
@@ -3782,6 +4050,12 @@ async function reloadSelectors() {
   state.selectors = payload.selectors;
   state.settings = payload.settings;
   state.log = payload.log || [];
+  if (payload.defaults) {
+    state.defaultSelectors = payload.defaults;
+  }
+  if (payload.defaultKeys && payload.defaultKeys.length) {
+    state.defaultKeys = payload.defaultKeys;
+  }
   state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : state.localManifest;
   syncAssistantManifest(payload.order || state.order);
   renderLog();
@@ -3791,6 +4065,7 @@ async function reloadSelectors() {
   refreshOllamaModels({ silent: true });
   refreshComfyHistory({ silent: true });
   renderAttachments();
+  clearNewSiteForm();
 }
 
 function hydrateSettings() {
@@ -3813,6 +4088,12 @@ async function bootstrap() {
   state.selectors = payload.selectors || {};
   state.settings = payload.settings || {};
   state.log = payload.log || [];
+  state.defaultSelectors = payload.defaults || state.defaultSelectors || {};
+  if (payload.defaultKeys && payload.defaultKeys.length) {
+    state.defaultKeys = payload.defaultKeys;
+  } else if (payload.defaults) {
+    state.defaultKeys = Object.keys(payload.defaults);
+  }
   state.localManifest = payload.assistants ? payload.assistants[LOCAL_AGENT_KEY] : null;
   syncAssistantManifest(payload.order || []);
   renderLog();
@@ -3822,6 +4103,7 @@ async function bootstrap() {
   refreshOllamaModels({ silent: true });
   refreshComfyHistory({ silent: true });
   renderAttachments();
+  clearNewSiteForm();
 }
 
 api.onStatus((status) => {

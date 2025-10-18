@@ -168,8 +168,42 @@
       </section>
       <section>
         <h3>Browser Assistants</h3>
+        <p class="section-help">Toggle or edit any assistant below. Use the guided form to add new browser UIs without touching JSON.</p>
+        <div class="add-site-form">
+          <h4>Add new assistant</h4>
+          <div class="grid">
+            <label>Assistant name
+              <input type="text" id="newSiteName" placeholder="Perplexity" />
+            </label>
+            <label>Assistant key
+              <input type="text" id="newSiteKey" placeholder="perplexity" />
+            </label>
+            <label>Start with template
+              <select id="newSiteTemplate"></select>
+            </label>
+            <label>Home URL
+              <input type="text" id="newSiteHome" placeholder="https://example.com/" />
+            </label>
+            <label>URL patterns (one per line)
+              <textarea id="newSitePatterns" rows="3" placeholder="https://example.com/*"></textarea>
+            </label>
+            <label>Input selectors
+              <textarea id="newSiteInput" rows="3" placeholder="textarea&#10;div[contenteditable='true']"></textarea>
+            </label>
+            <label>Send button selectors
+              <textarea id="newSiteSend" rows="3" placeholder="button[type='submit']"></textarea>
+            </label>
+            <label>Message container selectors
+              <textarea id="newSiteMessages" rows="3" placeholder="main&#10;div[class*='conversation']"></textarea>
+            </label>
+          </div>
+          <div class="add-site-actions">
+            <button id="addSiteBtn" class="primary" type="button">Create Assistant</button>
+            <button id="resetSiteForm" class="secondary" type="button">Clear Form</button>
+          </div>
+          <p class="section-hint">Keys must use letters, numbers, or hyphen. OmniChat copies the template selectors if you pick one, so you only need to tweak the pieces that differ.</p>
+        </div>
         <div id="siteEditor"></div>
-        <button id="addSiteBtn" class="secondary">Add Site</button>
       </section>
       <section>
         <h3>Utilities</h3>

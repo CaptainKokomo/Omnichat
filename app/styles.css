@@ -325,6 +325,18 @@ button:disabled {
   padding-top: 12px;
 }
 
+.settings .section-help {
+  margin: 0 0 12px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.settings .section-hint {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .settings h3 {
   margin-top: 0;
 }
@@ -340,6 +352,31 @@ button:disabled {
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
+}
+
+.add-site-form {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.add-site-form h4 {
+  margin: 0;
+}
+
+.add-site-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.add-site-actions button {
+  min-width: 160px;
 }
 
 .toast {

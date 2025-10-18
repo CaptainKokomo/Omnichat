@@ -849,6 +849,8 @@ ipcMain.handle('app:bootstrap', async () => {
     selectors: appState.selectors,
     settings: appState.settings,
     assistants: getAssistantManifest(),
+    defaults: JSON.parse(JSON.stringify(DEFAULT_SELECTORS)),
+    defaultKeys: Object.keys(DEFAULT_SELECTORS),
     order: [...Object.keys(appState.selectors), LOCAL_AGENT_KEY],
     log: logBuffer.slice(-200)
   };
