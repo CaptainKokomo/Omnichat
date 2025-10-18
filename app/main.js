@@ -16,13 +16,51 @@ const agentWindows = new Map();
 const agentState = new Map();
 const logBuffer = [];
 
+function withTrailingSlash(url) {
+  if (!url) return '';
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
+  }
+  return await response.json();
+}
+
+function buildComfyAssetURL(host, asset) {
+  const base = withTrailingSlash(host || DEFAULT_SETTINGS.comfyHost);
+  const url = new URL('view', base);
+  url.searchParams.set('filename', asset.filename || '');
+  url.searchParams.set('type', asset.type || 'output');
+  url.searchParams.set('subfolder', asset.subfolder || '');
+  return url.toString();
+}
+
+function guessMime(filename = '') {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.webm')) return 'video/webm';
+  return 'application/octet-stream';
+}
+
 const DEFAULT_SETTINGS = {
   confirmBeforeSend: true,
   delayMin: 1200,
   delayMax: 2500,
   messageLimit: 5,
   roundTableTurns: 2,
-  copilotHost: 'https://copilot.microsoft.com/'
+  copilotHost: 'https://copilot.microsoft.com/',
+  comfyHost: 'http://127.0.0.1:8188',
+  comfyAutoImport: true,
+  ollamaHost: 'http://127.0.0.1:11434',
+  ollamaModel: ''
 };
 
 const DEFAULT_SELECTORS = {
@@ -119,6 +157,158 @@ function saveSelectors(data) {
 function saveSettings(data) {
   settings = { ...settings, ...data };
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
+}
+
+async function listComfyHistory(limit = 8, hostOverride) {
+  const host = hostOverride || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const url = new URL('history', withTrailingSlash(host));
+  const payload = await fetchJson(url);
+  const entries = Object.entries(payload || {})
+    .map(([id, info]) => ({ id, info }))
+    .sort((a, b) => {
+      const at = a.info?.prompt?.extra?.creation_time || a.info?.timestamp || 0;
+      const bt = b.info?.prompt?.extra?.creation_time || b.info?.timestamp || 0;
+      return bt - at;
+    })
+    .slice(0, limit);
+
+  return entries.map(({ id, info }) => {
+    const outputs = info?.outputs || {};
+    const images = [];
+    const videos = [];
+    Object.values(outputs).forEach((node) => {
+      if (Array.isArray(node?.images)) {
+        node.images.forEach((image) => {
+          images.push({
+            ...image,
+            url: buildComfyAssetURL(host, image),
+            mime: guessMime(image.filename)
+          });
+        });
+      }
+      if (Array.isArray(node?.videos)) {
+        node.videos.forEach((video) => {
+          videos.push({
+            ...video,
+            url: buildComfyAssetURL(host, video),
+            mime: guessMime(video.filename)
+          });
+        });
+      }
+    });
+
+    return {
+      id,
+      title: info?.prompt?.extra?.title || info?.prompt?.extra?.workflow || id,
+      created: info?.prompt?.extra?.creation_time || info?.timestamp || Date.now(),
+      images,
+      videos
+    };
+  });
+}
+
+async function fetchComfyAsset(asset) {
+  const host = asset.host || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const assetUrl = buildComfyAssetURL(host, asset);
+  const response = await fetch(assetUrl);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const mime = asset.mime || guessMime(asset.filename);
+  return `data:${mime};base64,${buffer.toString('base64')}`;
+}
+
+async function runComfyWorkflowFromFile(hostOverride) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { ok: false, error: 'window_closed' };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Choose ComfyUI workflow',
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+    properties: ['openFile']
+  });
+  if (result.canceled || !result.filePaths.length) {
+    return { ok: false, canceled: true };
+  }
+  const host = hostOverride || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const filePath = result.filePaths[0];
+  const workflow = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const url = new URL('prompt', withTrailingSlash(host));
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(workflow)
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
+  }
+  return { ok: true };
+}
+
+async function listOllamaModels(hostOverride) {
+  const host = hostOverride || settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
+  const url = new URL('api/tags', withTrailingSlash(host));
+  const data = await fetchJson(url);
+  return Array.isArray(data?.models) ? data.models.map((model) => model.name) : [];
+}
+
+async function generateWithOllama({ model, prompt, host }) {
+  const ollamaHost = host || settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
+  const url = new URL('api/generate', withTrailingSlash(ollamaHost));
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, prompt, stream: true })
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
+  }
+
+  let output = '';
+  const reader = response.body?.getReader ? response.body.getReader() : null;
+  if (reader) {
+    const decoder = new TextDecoder();
+    let remainder = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      remainder += decoder.decode(value, { stream: true });
+      let index;
+      while ((index = remainder.indexOf('\n')) >= 0) {
+        const line = remainder.slice(0, index).trim();
+        remainder = remainder.slice(index + 1);
+        if (!line) continue;
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed.response) {
+            output += parsed.response;
+          }
+        } catch (error) {
+          // ignore malformed chunks
+        }
+      }
+    }
+    const tail = remainder.trim();
+    if (tail) {
+      try {
+        const parsed = JSON.parse(tail);
+        if (parsed.response) {
+          output += parsed.response;
+        }
+      } catch (error) {
+        // ignore tail parse errors
+      }
+    }
+  } else {
+    const text = await response.text();
+    output = text;
+  }
+
+  return output;
 }
 
 function createWindow() {
@@ -400,6 +590,50 @@ ipcMain.handle('settings:save', async (_event, payload) => {
   return { ok: true };
 });
 
+ipcMain.handle('selectors:importFile', async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { ok: false, error: 'window_closed' };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Import selectors.json',
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+    properties: ['openFile']
+  });
+  if (result.canceled || !result.filePaths.length) {
+    return { ok: false, canceled: true };
+  }
+  const filePath = result.filePaths[0];
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(raw);
+    saveSelectors(data);
+    return { ok: true, selectors };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('selectors:exportFile', async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { ok: false, error: 'window_closed' };
+  }
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export selectors.json',
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+    defaultPath: path.join(app.getPath('documents'), 'omnichat-selectors.json')
+  });
+  if (result.canceled || !result.filePath) {
+    return { ok: false, canceled: true };
+  }
+  fs.writeFileSync(result.filePath, JSON.stringify(selectors, null, 2), 'utf8');
+  return { ok: true, path: result.filePath };
+});
+
+ipcMain.handle('config:openFolder', async () => {
+  await shell.openPath(CONFIG_ROOT);
+  return { ok: true };
+});
+
 ipcMain.handle('agent:ensure', async (_event, key) => {
   await ensureAgentWindow(key);
   return agentState.get(key) || { key };
@@ -493,6 +727,52 @@ ipcMain.handle('settings:resetAgent', async (_event, key) => {
   selectors[key] = JSON.parse(JSON.stringify(DEFAULT_SELECTORS[key]));
   saveSelectors(selectors);
   return { ok: true, selectors };
+});
+
+ipcMain.handle('local:comfy:list', async (_event, options = {}) => {
+  const { limit = 8, host } = options;
+  try {
+    const jobs = await listComfyHistory(limit, host);
+    return { ok: true, jobs };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('local:comfy:asset', async (_event, asset) => {
+  try {
+    const dataUrl = await fetchComfyAsset(asset || {});
+    return { ok: true, dataUrl };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('local:comfy:run', async (_event, hostOverride) => {
+  try {
+    const result = await runComfyWorkflowFromFile(hostOverride);
+    return result;
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('local:ollama:models', async (_event, hostOverride) => {
+  try {
+    const models = await listOllamaModels(hostOverride);
+    return { ok: true, models };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+});
+
+ipcMain.handle('local:ollama:generate', async (_event, payload) => {
+  try {
+    const text = await generateWithOllama(payload || {});
+    return { ok: true, text };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
 });
 
 app.whenReady().then(() => {

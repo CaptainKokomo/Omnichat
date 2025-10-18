@@ -47,6 +47,54 @@
           <button id="attachBtn" class="secondary">Quick Attach Snippet</button>
         </div>
         <div class="attachments" id="attachments"></div>
+        <section class="local-studio">
+          <header class="studio-header">
+            <h2>Local Studio</h2>
+            <p>Blend local AI outputs with your broadcast without leaving OmniChat.</p>
+          </header>
+          <div class="studio-grid">
+            <div class="studio-card">
+              <header>
+                <h3>Ollama Text Models</h3>
+                <div class="inline-controls">
+                  <label>Host
+                    <input type="text" id="ollamaHostField" placeholder="http://127.0.0.1:11434" />
+                  </label>
+                  <button id="ollamaRefresh" class="secondary" type="button">Refresh Models</button>
+                </div>
+              </header>
+              <div class="studio-body">
+                <label>Model
+                  <select id="ollamaModelSelect"></select>
+                </label>
+                <label>Prompt
+                  <textarea id="ollamaPrompt" rows="6" placeholder="Ask your local model..."></textarea>
+                </label>
+                <div class="studio-actions">
+                  <button id="ollamaGenerate" class="primary" type="button">Generate</button>
+                  <button id="ollamaInsert" class="secondary" type="button">Insert to Composer</button>
+                </div>
+                <div id="ollamaOutput" class="studio-output" aria-live="polite"></div>
+              </div>
+            </div>
+            <div class="studio-card">
+              <header>
+                <h3>ComfyUI Visuals</h3>
+                <div class="inline-controls">
+                  <label>Host
+                    <input type="text" id="comfyHostField" placeholder="http://127.0.0.1:8188" />
+                  </label>
+                  <button id="comfyRefresh" class="secondary" type="button">Fetch Latest</button>
+                  <button id="comfyRun" class="secondary" type="button">Run Workflow…</button>
+                </div>
+              </header>
+              <div class="studio-body">
+                <div id="comfyStatus" class="studio-status">No ComfyUI results yet.</div>
+                <div id="comfyGallery" class="gallery"></div>
+              </div>
+            </div>
+          </div>
+        </section>
       </section>
     </main>
     <aside class="pane pane-right">
@@ -98,12 +146,32 @@
           <label>Copilot host
             <input type="text" id="copilotHost" />
           </label>
+          <label>ComfyUI host
+            <input type="text" id="settingsComfyHost" />
+          </label>
+          <label class="checkbox">Auto-import ComfyUI results
+            <input type="checkbox" id="settingsComfyAuto" />
+          </label>
+          <label>Ollama host
+            <input type="text" id="settingsOllamaHost" />
+          </label>
+          <label>Preferred Ollama model
+            <input type="text" id="settingsOllamaModel" />
+          </label>
         </div>
       </section>
       <section>
         <h3>Browser Assistants</h3>
         <div id="siteEditor"></div>
         <button id="addSiteBtn" class="secondary">Add Site</button>
+      </section>
+      <section>
+        <h3>Utilities</h3>
+        <div class="utility-actions">
+          <button id="importSelectorsBtn" class="secondary" type="button">Import selectors.json…</button>
+          <button id="exportSelectorsBtn" class="secondary" type="button">Export selectors.json…</button>
+          <button id="openConfigBtn" class="secondary" type="button">Open config folder</button>
+        </div>
       </section>
     </div>
   </div>

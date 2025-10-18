@@ -34,7 +34,26 @@ const elements = {
   delayMax: document.getElementById('delayMax'),
   messageLimit: document.getElementById('messageLimit'),
   defaultTurns: document.getElementById('defaultTurns'),
-  copilotHost: document.getElementById('copilotHost')
+  copilotHost: document.getElementById('copilotHost'),
+  settingsComfyHost: document.getElementById('settingsComfyHost'),
+  settingsComfyAuto: document.getElementById('settingsComfyAuto'),
+  settingsOllamaHost: document.getElementById('settingsOllamaHost'),
+  settingsOllamaModel: document.getElementById('settingsOllamaModel'),
+  importSelectorsBtn: document.getElementById('importSelectorsBtn'),
+  exportSelectorsBtn: document.getElementById('exportSelectorsBtn'),
+  openConfigBtn: document.getElementById('openConfigBtn'),
+  ollamaHostField: document.getElementById('ollamaHostField'),
+  ollamaRefresh: document.getElementById('ollamaRefresh'),
+  ollamaModelSelect: document.getElementById('ollamaModelSelect'),
+  ollamaPrompt: document.getElementById('ollamaPrompt'),
+  ollamaGenerate: document.getElementById('ollamaGenerate'),
+  ollamaInsert: document.getElementById('ollamaInsert'),
+  ollamaOutput: document.getElementById('ollamaOutput'),
+  comfyHostField: document.getElementById('comfyHostField'),
+  comfyRefresh: document.getElementById('comfyRefresh'),
+  comfyRun: document.getElementById('comfyRun'),
+  comfyStatus: document.getElementById('comfyStatus'),
+  comfyGallery: document.getElementById('comfyGallery')
 };
 
 const DEFAULT_KEYS = ['chatgpt', 'claude', 'copilot', 'gemini'];
@@ -48,6 +67,14 @@ const state = {
   log: [],
   attachments: [],
   confirmResolver: null,
+  local: {
+    ollamaModels: [],
+    ollamaOutput: '',
+    ollamaBusy: false,
+    comfyJobs: [],
+    comfyBusy: false,
+    comfyImported: new Set()
+  },
   round: {
     active: false,
     paused: false,
@@ -58,6 +85,15 @@ const state = {
     timer: null
   }
 };
+
+let settingsSaveTimer = null;
+
+function scheduleSettingsSave() {
+  clearTimeout(settingsSaveTimer);
+  settingsSaveTimer = setTimeout(() => {
+    api.saveSettings(state.settings);
+  }, 400);
+}
 
 function appendLog(entry) {
   state.log.push(entry);
@@ -445,15 +481,35 @@ function collectSettingsFromModal() {
     delayMax: Number(elements.delayMax.value) || 0,
     messageLimit: Number(elements.messageLimit.value) || 1,
     roundTableTurns: Number(elements.defaultTurns.value) || 1,
-    copilotHost: elements.copilotHost.value.trim()
+    copilotHost: elements.copilotHost.value.trim(),
+    comfyHost: elements.settingsComfyHost.value.trim(),
+    comfyAutoImport: elements.settingsComfyAuto.checked,
+    ollamaHost: elements.settingsOllamaHost.value.trim(),
+    ollamaModel: elements.settingsOllamaModel.value.trim()
   };
 }
 
 async function persistSettings() {
   const next = collectSettingsFromModal();
+  const previousOllamaHost = state.settings.ollamaHost;
+  const previousComfyHost = state.settings.comfyHost;
+  const previousComfyAuto = state.settings.comfyAutoImport;
   state.settings = { ...state.settings, ...next };
   await api.saveSettings(state.settings);
   elements.roundTurns.value = state.settings.roundTableTurns;
+  syncStudioHosts();
+  if (next.ollamaHost !== previousOllamaHost) {
+    state.local.ollamaOutput = '';
+    renderOllamaOutput();
+    refreshOllamaModels({ silent: true });
+  }
+  if (next.comfyHost !== previousComfyHost) {
+    state.local.comfyImported = new Set();
+    refreshComfyHistory({ silent: true });
+  }
+  if (!previousComfyAuto && state.settings.comfyAutoImport) {
+    autoImportComfyResult();
+  }
 }
 
 function openSettingsModal() {
@@ -522,6 +578,39 @@ elements.addSiteBtn.addEventListener('click', () => {
   renderAgents();
 });
 
+if (elements.importSelectorsBtn) {
+  elements.importSelectorsBtn.addEventListener('click', async () => {
+    const result = await api.importSelectors();
+    if (result && result.ok) {
+      state.selectors = result.selectors || state.selectors;
+      state.order = Object.keys(state.selectors);
+      renderSiteEditor();
+      renderAgents();
+      showToast('selectors.json imported.');
+    } else if (result && result.error) {
+      showToast(`Import failed: ${result.error}`);
+    }
+  });
+}
+
+if (elements.exportSelectorsBtn) {
+  elements.exportSelectorsBtn.addEventListener('click', async () => {
+    const result = await api.exportSelectors();
+    if (result && result.ok) {
+      showToast(`selectors.json exported to ${result.path}`);
+    } else if (result && result.error) {
+      showToast(`Export failed: ${result.error}`);
+    }
+  });
+}
+
+if (elements.openConfigBtn) {
+  elements.openConfigBtn.addEventListener('click', async () => {
+    await api.openConfigFolder();
+    showToast('Config folder opened in Explorer.');
+  });
+}
+
 async function ensureAgent(key) {
   try {
     const status = await api.ensureAgent(key);
@@ -565,7 +654,12 @@ function buildMessageWithAttachments(base) {
   if (!state.attachments.length) return base;
   const parts = [base];
   state.attachments.forEach((attachment, index) => {
-    parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`);
+    if (attachment.type === 'text') {
+      parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}\n${attachment.meta}\n${attachment.body}`);
+    } else {
+      const meta = attachment.meta ? `\n${attachment.meta}` : '';
+      parts.push(`\n\n[Attachment ${index + 1}] ${attachment.title}${meta}\n(${attachment.type || 'asset'} attached in OmniChat)`);
+    }
   });
   return parts.join('');
 }
@@ -647,8 +741,92 @@ elements.attachBtn.addEventListener('click', () => {
   });
 });
 
+if (elements.ollamaRefresh) {
+  elements.ollamaRefresh.addEventListener('click', () => {
+    refreshOllamaModels();
+  });
+}
+
+if (elements.ollamaGenerate) {
+  elements.ollamaGenerate.addEventListener('click', () => {
+    runOllamaGeneration();
+  });
+}
+
+if (elements.ollamaInsert) {
+  elements.ollamaInsert.addEventListener('click', () => {
+    if (!state.local.ollamaOutput) {
+      showToast('Generate with Ollama first.');
+      return;
+    }
+    const existing = elements.composerInput.value.trim();
+    const snippet = `Ollama (${state.settings.ollamaModel || 'model'}):\n${state.local.ollamaOutput}`;
+    elements.composerInput.value = existing ? `${existing}\n\n${snippet}` : snippet;
+  });
+}
+
+if (elements.ollamaModelSelect) {
+  elements.ollamaModelSelect.addEventListener('change', () => {
+    const value = elements.ollamaModelSelect.value;
+    state.settings.ollamaModel = value;
+    scheduleSettingsSave();
+  });
+}
+
+if (elements.ollamaHostField) {
+  elements.ollamaHostField.addEventListener('change', () => {
+    state.settings.ollamaHost = elements.ollamaHostField.value.trim();
+    scheduleSettingsSave();
+    state.local.ollamaOutput = '';
+    renderOllamaOutput();
+    refreshOllamaModels({ silent: true });
+  });
+}
+
+if (elements.comfyHostField) {
+  elements.comfyHostField.addEventListener('change', () => {
+    state.settings.comfyHost = elements.comfyHostField.value.trim();
+    scheduleSettingsSave();
+    state.local.comfyImported = new Set();
+    refreshComfyHistory({ silent: true });
+  });
+}
+
+if (elements.comfyRefresh) {
+  elements.comfyRefresh.addEventListener('click', () => {
+    refreshComfyHistory();
+  });
+}
+
+if (elements.comfyRun) {
+  elements.comfyRun.addEventListener('click', async () => {
+    try {
+      setComfyBusy(true);
+      const host = elements.comfyHostField.value.trim();
+      state.settings.comfyHost = host;
+      scheduleSettingsSave();
+      const result = await api.runComfyWorkflow(host || undefined);
+      if (!result || !result.ok) {
+        if (result?.canceled) {
+          renderComfyStatus('Workflow selection canceled.');
+          return;
+        }
+        throw new Error(result?.error || 'Workflow launch failed.');
+      }
+      renderComfyStatus('Workflow queued. Waiting for results…');
+      showToast('ComfyUI workflow submitted.');
+      setTimeout(() => refreshComfyHistory({ silent: true }), 3000);
+    } catch (error) {
+      renderComfyStatus(error.message || 'Workflow launch failed.', true);
+      showToast(`ComfyUI: ${error.message}`);
+    } finally {
+      setComfyBusy(false);
+    }
+  });
+}
+
 function pushAttachment(attachment) {
-  state.attachments.push(attachment);
+  state.attachments.push({ type: 'text', ...attachment });
   renderAttachments();
 }
 
@@ -668,30 +846,330 @@ function renderAttachments() {
     meta.className = 'attachment-meta';
     meta.textContent = attachment.meta;
     const body = document.createElement('div');
-    body.textContent = attachment.body;
+    body.className = 'attachment-body';
+    if (attachment.type === 'text') {
+      body.textContent = attachment.body;
+    } else {
+      body.textContent = attachment.body || `${attachment.type} attachment`;
+    }
     const actions = document.createElement('div');
     actions.className = 'site-actions';
     const insertBtn = document.createElement('button');
     insertBtn.className = 'secondary';
     insertBtn.textContent = 'Insert into composer';
     insertBtn.addEventListener('click', () => {
-      elements.composerInput.value = `${elements.composerInput.value}\n\n${attachment.body}`.trim();
+      const chunk = attachment.type === 'text'
+        ? attachment.body
+        : `${attachment.title}\n${attachment.meta || ''}`.trim();
+      elements.composerInput.value = `${elements.composerInput.value}\n\n${chunk}`.trim();
     });
     const removeBtn = document.createElement('button');
     removeBtn.className = 'secondary';
     removeBtn.textContent = 'Remove';
     removeBtn.addEventListener('click', () => {
       state.attachments.splice(index, 1);
+      if (attachment.assetKey && state.local.comfyImported?.has(attachment.assetKey)) {
+        state.local.comfyImported.delete(attachment.assetKey);
+      }
       renderAttachments();
     });
     actions.appendChild(insertBtn);
     actions.appendChild(removeBtn);
+    let mediaWrapper = null;
+    if (attachment.dataUrl) {
+      const media = document.createElement(attachment.type === 'video' ? 'video' : 'img');
+      media.src = attachment.dataUrl;
+      media.className = 'attachment-media-item';
+      if (attachment.type === 'video') {
+        media.controls = true;
+      }
+      mediaWrapper = document.createElement('div');
+      mediaWrapper.className = 'attachment-media';
+      mediaWrapper.appendChild(media);
+    }
     div.appendChild(title);
     div.appendChild(meta);
     div.appendChild(body);
+    if (mediaWrapper) {
+      div.appendChild(mediaWrapper);
+    }
     div.appendChild(actions);
     elements.attachments.appendChild(div);
   });
+}
+
+function syncStudioHosts() {
+  if (elements.ollamaHostField) {
+    elements.ollamaHostField.value = state.settings.ollamaHost || elements.ollamaHostField.placeholder || '';
+  }
+  if (elements.comfyHostField) {
+    elements.comfyHostField.value = state.settings.comfyHost || elements.comfyHostField.placeholder || '';
+  }
+  renderOllamaModels();
+  renderOllamaOutput();
+  renderComfyGallery();
+}
+
+function renderOllamaModels() {
+  if (!elements.ollamaModelSelect) return;
+  elements.ollamaModelSelect.innerHTML = '';
+  if (!state.local.ollamaModels.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No models detected';
+    elements.ollamaModelSelect.appendChild(option);
+    elements.ollamaModelSelect.disabled = true;
+    if (state.settings.ollamaModel) {
+      state.settings.ollamaModel = '';
+      scheduleSettingsSave();
+    }
+    return;
+  }
+  elements.ollamaModelSelect.disabled = false;
+  state.local.ollamaModels.forEach((model) => {
+    const option = document.createElement('option');
+    option.value = model;
+    option.textContent = model;
+    elements.ollamaModelSelect.appendChild(option);
+  });
+  const preferred = state.settings.ollamaModel;
+  if (preferred && state.local.ollamaModels.includes(preferred)) {
+    elements.ollamaModelSelect.value = preferred;
+  } else {
+    elements.ollamaModelSelect.selectedIndex = 0;
+    state.settings.ollamaModel = elements.ollamaModelSelect.value;
+    scheduleSettingsSave();
+  }
+}
+
+function renderOllamaOutput() {
+  if (!elements.ollamaOutput) return;
+  elements.ollamaOutput.textContent = state.local.ollamaOutput || 'Generated text will appear here.';
+}
+
+function setOllamaBusy(isBusy) {
+  state.local.ollamaBusy = isBusy;
+  if (elements.ollamaGenerate) {
+    elements.ollamaGenerate.disabled = isBusy;
+  }
+  if (elements.ollamaRefresh) {
+    elements.ollamaRefresh.disabled = isBusy;
+  }
+}
+
+async function refreshOllamaModels({ silent = false } = {}) {
+  if (!elements.ollamaHostField) return;
+  try {
+    setOllamaBusy(true);
+    const host = elements.ollamaHostField.value.trim();
+    state.settings.ollamaHost = host;
+    scheduleSettingsSave();
+    const result = await api.listOllamaModels(host || undefined);
+    if (!result || !result.ok) {
+      throw new Error(result?.error || 'Unable to reach Ollama.');
+    }
+    state.local.ollamaModels = result.models || [];
+    renderOllamaModels();
+    if (!silent) {
+      showToast('Ollama models refreshed.');
+    }
+  } catch (error) {
+    state.local.ollamaModels = [];
+    renderOllamaModels();
+    if (!silent) {
+      showToast(`Ollama: ${error.message}`);
+    }
+  } finally {
+    setOllamaBusy(false);
+  }
+}
+
+async function runOllamaGeneration() {
+  const model = elements.ollamaModelSelect.value || state.settings.ollamaModel;
+  const prompt = elements.ollamaPrompt.value.trim();
+  if (!model) {
+    showToast('Choose an Ollama model.');
+    return;
+  }
+  if (!prompt) {
+    showToast('Enter a prompt for Ollama.');
+    return;
+  }
+  try {
+    setOllamaBusy(true);
+    const host = elements.ollamaHostField.value.trim();
+    state.settings.ollamaHost = host;
+    scheduleSettingsSave();
+    const result = await api.generateOllama({ model, prompt, host: host || undefined });
+    if (!result || !result.ok) {
+      throw new Error(result?.error || 'Generation failed.');
+    }
+    const text = (result.text || '').trim();
+    state.local.ollamaOutput = text;
+    renderOllamaOutput();
+    if (text) {
+      pushAttachment({
+        type: 'text',
+        title: `Ollama (${model})`,
+        meta: host ? `Host ${host}` : 'Local host',
+        body: text
+      });
+    }
+    showToast('Ollama response ready.');
+  } catch (error) {
+    showToast(`Ollama: ${error.message}`);
+  } finally {
+    setOllamaBusy(false);
+  }
+}
+
+function renderComfyStatus(message, isError = false) {
+  if (!elements.comfyStatus) return;
+  elements.comfyStatus.textContent = message;
+  elements.comfyStatus.classList.toggle('error', !!isError);
+}
+
+function setComfyBusy(isBusy) {
+  state.local.comfyBusy = isBusy;
+  if (elements.comfyRefresh) {
+    elements.comfyRefresh.disabled = isBusy;
+  }
+  if (elements.comfyRun) {
+    elements.comfyRun.disabled = isBusy;
+  }
+}
+
+function renderComfyGallery() {
+  if (!elements.comfyGallery) return;
+  elements.comfyGallery.innerHTML = '';
+  if (!state.local.comfyJobs.length) {
+    renderComfyStatus('No ComfyUI results yet.');
+    return;
+  }
+  renderComfyStatus(`Showing ${state.local.comfyJobs.length} recent ComfyUI jobs.`);
+  let assetCount = 0;
+  state.local.comfyJobs.forEach((job) => {
+    const assets = [...(job.images || []), ...(job.videos || [])];
+    if (!assets.length) return;
+    assets.forEach((asset) => {
+      const item = document.createElement('div');
+      item.className = 'gallery-item';
+      const isVideo = (asset.mime || '').startsWith('video/');
+      const media = document.createElement(isVideo ? 'video' : 'img');
+      media.src = asset.url;
+      if (isVideo) {
+        media.controls = true;
+      }
+      item.appendChild(media);
+      const caption = document.createElement('div');
+      const created = job.created ? new Date(job.created).toLocaleTimeString() : '';
+      caption.textContent = `${job.title || job.id}${created ? ` · ${created}` : ''}`;
+      item.appendChild(caption);
+      const meta = document.createElement('div');
+      meta.className = 'attachment-meta';
+      meta.textContent = asset.filename || '';
+      item.appendChild(meta);
+      const btn = document.createElement('button');
+      btn.className = 'secondary';
+      btn.textContent = 'Import to attachments';
+      btn.addEventListener('click', async () => {
+        await importComfyAsset(job, asset);
+      });
+      item.appendChild(btn);
+      elements.comfyGallery.appendChild(item);
+      assetCount += 1;
+    });
+  });
+  if (!assetCount) {
+    renderComfyStatus('Recent jobs do not contain downloadable assets yet.');
+  }
+}
+
+async function refreshComfyHistory({ silent = false } = {}) {
+  if (!elements.comfyHostField) return;
+  try {
+    setComfyBusy(true);
+    const host = elements.comfyHostField.value.trim();
+    state.settings.comfyHost = host;
+    scheduleSettingsSave();
+    const result = await api.listComfyJobs({ limit: 12, host });
+    if (!result || !result.ok) {
+      throw new Error(result?.error || 'Unable to reach ComfyUI.');
+    }
+    state.local.comfyJobs = result.jobs || [];
+    renderComfyGallery();
+    if (!silent) {
+      showToast('ComfyUI results updated.');
+    }
+    if (state.settings.comfyAutoImport) {
+      autoImportComfyResult();
+    }
+  } catch (error) {
+    state.local.comfyJobs = [];
+    renderComfyGallery();
+    renderComfyStatus(error.message || 'Unable to reach ComfyUI.', true);
+    if (!silent) {
+      showToast(`ComfyUI: ${error.message}`);
+    }
+  } finally {
+    setComfyBusy(false);
+  }
+}
+
+function buildComfyAssetKey(job, asset) {
+  return `${job.id || 'job'}:${asset.filename || 'asset'}:${asset.subfolder || ''}`;
+}
+
+async function importComfyAsset(job, asset) {
+  try {
+    const key = buildComfyAssetKey(job, asset);
+    if (state.local.comfyImported.has(key)) {
+      showToast('Asset already imported.');
+      return;
+    }
+    state.local.comfyImported.add(key);
+    const host = elements.comfyHostField ? elements.comfyHostField.value.trim() : '';
+    const result = await api.fetchComfyAsset({
+      filename: asset.filename,
+      subfolder: asset.subfolder,
+      type: asset.type,
+      mime: asset.mime,
+      host: host || undefined
+    });
+    if (!result || !result.ok) {
+      throw new Error(result?.error || 'Unable to fetch asset.');
+    }
+    const type = (asset.mime || '').startsWith('video/') ? 'video' : 'image';
+    pushAttachment({
+      type,
+      title: `${job.title || 'ComfyUI asset'}`,
+      meta: asset.filename || '',
+      body: `${job.title || job.id} · ${asset.filename || ''}`.trim(),
+      dataUrl: result.dataUrl,
+      assetKey: key
+    });
+    showToast('ComfyUI asset imported.');
+  } catch (error) {
+    const key = buildComfyAssetKey(job, asset);
+    if (state.local.comfyImported.has(key) && !state.attachments.some((att) => att.assetKey === key)) {
+      state.local.comfyImported.delete(key);
+    }
+    showToast(`ComfyUI: ${error.message}`);
+  }
+}
+
+function autoImportComfyResult() {
+  const jobs = state.local.comfyJobs || [];
+  for (const job of jobs) {
+    const assets = [...(job.images || []), ...(job.videos || [])];
+    for (const asset of assets) {
+      const key = buildComfyAssetKey(job, asset);
+      if (!state.local.comfyImported.has(key)) {
+        importComfyAsset(job, asset);
+        return;
+      }
+    }
+  }
 }
 
 async function startRoundTable() {
@@ -821,6 +1299,9 @@ async function reloadSelectors() {
   renderAgents();
   renderSiteEditor();
   hydrateSettings();
+  refreshOllamaModels({ silent: true });
+  refreshComfyHistory({ silent: true });
+  renderAttachments();
 }
 
 function hydrateSettings() {
@@ -831,6 +1312,11 @@ function hydrateSettings() {
   elements.defaultTurns.value = state.settings.roundTableTurns || 2;
   elements.copilotHost.value = state.settings.copilotHost || '';
   elements.roundTurns.value = state.settings.roundTableTurns || 2;
+  elements.settingsComfyHost.value = state.settings.comfyHost || '';
+  elements.settingsComfyAuto.checked = !!state.settings.comfyAutoImport;
+  elements.settingsOllamaHost.value = state.settings.ollamaHost || '';
+  elements.settingsOllamaModel.value = state.settings.ollamaModel || '';
+  syncStudioHosts();
 }
 
 async function bootstrap() {
@@ -844,6 +1330,9 @@ async function bootstrap() {
   renderAgents();
   renderSiteEditor();
   hydrateSettings();
+  refreshOllamaModels({ silent: true });
+  refreshComfyHistory({ silent: true });
+  renderAttachments();
 }
 
 api.onStatus((status) => {
