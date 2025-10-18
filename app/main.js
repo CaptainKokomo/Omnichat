@@ -2,53 +2,13 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const INSTALL_ROOT = path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'OmniChat');
+const APP_NAME = 'OmniChat';
+const INSTALL_ROOT = path.join(process.env.LOCALAPPDATA || app.getPath('userData'), APP_NAME);
 const CONFIG_ROOT = path.join(INSTALL_ROOT, 'config');
 const LOG_ROOT = path.join(INSTALL_ROOT, 'logs');
 const SELECTOR_PATH = path.join(CONFIG_ROOT, 'selectors.json');
 const SETTINGS_PATH = path.join(CONFIG_ROOT, 'settings.json');
 const FIRST_RUN_PATH = path.join(INSTALL_ROOT, 'FIRST_RUN.txt');
-
-let mainWindow;
-let selectors = {};
-let settings = {};
-const agentWindows = new Map();
-const agentState = new Map();
-const logBuffer = [];
-
-function withTrailingSlash(url) {
-  if (!url) return '';
-  return url.endsWith('/') ? url : `${url}/`;
-}
-
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
-  }
-  return await response.json();
-}
-
-function buildComfyAssetURL(host, asset) {
-  const base = withTrailingSlash(host || DEFAULT_SETTINGS.comfyHost);
-  const url = new URL('view', base);
-  url.searchParams.set('filename', asset.filename || '');
-  url.searchParams.set('type', asset.type || 'output');
-  url.searchParams.set('subfolder', asset.subfolder || '');
-  return url.toString();
-}
-
-function guessMime(filename = '') {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  if (lower.endsWith('.mp4')) return 'video/mp4';
-  if (lower.endsWith('.webm')) return 'video/webm';
-  return 'application/octet-stream';
-}
 
 const DEFAULT_SETTINGS = {
   confirmBeforeSend: true,
@@ -98,6 +58,357 @@ const DEFAULT_SELECTORS = {
   }
 };
 
+const DOM_TASKS = {
+  sendMessage(cfg, context = {}) {
+    const { text = '' } = context;
+    const findFirst = (selectors) => {
+      if (!selectors) return null;
+      for (const selector of selectors) {
+        try {
+          const el = document.querySelector(selector);
+          if (el) return el;
+        } catch (error) {
+          // ignore selector errors
+        }
+      }
+      return null;
+    };
+
+    const input = findFirst(cfg.input);
+    if (!input) {
+      return { ok: false, reason: 'input' };
+    }
+
+    const setValue = (element, value) => {
+      const proto = Object.getPrototypeOf(element);
+      const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+      if (descriptor && typeof descriptor.set === 'function') {
+        descriptor.set.call(element, value);
+      } else {
+        element.value = value;
+      }
+    };
+
+    setValue(input, text);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+
+    const button = findFirst(cfg.sendButton);
+    if (button) {
+      button.click();
+      return { ok: true, via: 'button' };
+    }
+
+    const keyboardEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      bubbles: true,
+      cancelable: true
+    });
+    input.dispatchEvent(keyboardEvent);
+
+    if (keyboardEvent.defaultPrevented) {
+      const enterEvent = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true });
+      input.dispatchEvent(enterEvent);
+    }
+
+    const bannerId = '__omnichat_hint';
+    let banner = document.getElementById(bannerId);
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = bannerId;
+      banner.style.position = 'fixed';
+      banner.style.bottom = '16px';
+      banner.style.right = '16px';
+      banner.style.padding = '12px 18px';
+      banner.style.background = '#1f2937';
+      banner.style.color = '#ffffff';
+      banner.style.fontFamily = 'Segoe UI, sans-serif';
+      banner.style.borderRadius = '6px';
+      banner.style.boxShadow = '0 12px 32px rgba(15, 23, 42, 0.35)';
+      banner.style.zIndex = '2147483647';
+      document.body.appendChild(banner);
+    }
+    banner.textContent = 'Press Enter in the site tab if the message did not send.';
+    setTimeout(() => {
+      if (banner && banner.parentElement) {
+        banner.remove();
+      }
+    }, 4500);
+
+    return { ok: true, via: 'enter' };
+  },
+
+  readMessages(cfg, context = {}) {
+    const { limit = 5 } = context;
+    const findFirst = (selectors) => {
+      if (!selectors) return null;
+      for (const selector of selectors) {
+        try {
+          const el = document.querySelector(selector);
+          if (el) return el;
+        } catch (error) {
+          // ignore selector errors
+        }
+      }
+      return null;
+    };
+
+    const container = findFirst(cfg.messageContainer);
+    if (!container) {
+      return { ok: false, reason: 'messageContainer' };
+    }
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, null);
+    const transcript = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node) continue;
+      if (node.childElementCount === 0) {
+        const text = (node.textContent || '').trim();
+        if (text) {
+          transcript.push(text);
+        }
+      }
+    }
+
+    const deduped = [];
+    for (const line of transcript) {
+      if (!deduped.length || deduped[deduped.length - 1] !== line) {
+        deduped.push(line);
+      }
+    }
+
+    return { ok: true, messages: deduped.slice(-limit) };
+  },
+
+  captureSelection() {
+    const selection = window.getSelection();
+    const text = selection ? selection.toString().trim() : '';
+    return {
+      ok: true,
+      selection: text,
+      title: document.title,
+      url: location.href
+    };
+  },
+
+  snapshotPage(_cfg, context = {}) {
+    const limit = Number(context.limit) || 2000;
+    const text = document.body ? document.body.innerText || '' : '';
+    return {
+      ok: true,
+      title: document.title,
+      url: location.href,
+      content: text.slice(0, limit)
+    };
+  }
+};
+
+function pickSelectors(config = {}) {
+  return {
+    input: Array.isArray(config.input) ? config.input : [],
+    sendButton: Array.isArray(config.sendButton) ? config.sendButton : [],
+    messageContainer: Array.isArray(config.messageContainer) ? config.messageContainer : []
+  };
+}
+
+function createDomScript(config, taskName, context, settings) {
+  const task = DOM_TASKS[taskName];
+  if (!task) {
+    throw new Error(`Unknown DOM task ${taskName}`);
+  }
+  const safeContext = {
+    ...context,
+    limit: context && typeof context.limit !== 'undefined' ? context.limit : settings.messageLimit || DEFAULT_SETTINGS.messageLimit
+  };
+  const payload = {
+    cfg: pickSelectors(config),
+    context: safeContext
+  };
+  return `(() => {\nconst cfg = ${JSON.stringify(payload.cfg)};\nconst context = ${JSON.stringify(payload.context)};\nconst task = ${task.toString()};\nreturn task(cfg, context);\n})()`;
+}
+
+class JsonStore {
+  constructor(filePath, defaults) {
+    this.filePath = filePath;
+    this.defaults = defaults;
+  }
+
+  load() {
+    try {
+      if (!fs.existsSync(this.filePath)) {
+        const initial = JSON.stringify(this.defaults, null, 2);
+        fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+        fs.writeFileSync(this.filePath, initial, 'utf8');
+        return JSON.parse(initial);
+      }
+      const raw = fs.readFileSync(this.filePath, 'utf8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(this.defaults) || typeof this.defaults !== 'object') {
+        return data;
+      }
+      return { ...this.defaults, ...data };
+    } catch (error) {
+      console.error(`Failed to load ${this.filePath}`, error);
+      return JSON.parse(JSON.stringify(this.defaults));
+    }
+  }
+
+  save(value) {
+    try {
+      const serialised = JSON.stringify(value, null, 2);
+      fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+      fs.writeFileSync(this.filePath, serialised, 'utf8');
+    } catch (error) {
+      console.error(`Failed to save ${this.filePath}`, error);
+    }
+  }
+}
+
+class AgentSession {
+  constructor(key, getConfig) {
+    this.key = key;
+    this.getConfig = getConfig;
+    this.window = null;
+    this.queue = Promise.resolve();
+    this.destroyed = false;
+    this.lastUrl = '';
+  }
+
+  updateConfig() {
+    if (!this.getConfig()) {
+      this.destroy();
+    }
+  }
+
+  async ensureWindow() {
+    if (this.destroyed) {
+      throw new Error('agent_removed');
+    }
+    if (this.window && !this.window.isDestroyed()) {
+      return this.window;
+    }
+
+    const config = this.getConfig();
+    if (!config) {
+      throw new Error('unknown_agent');
+    }
+
+    const agentWin = new BrowserWindow({
+      width: 1280,
+      height: 800,
+      show: false,
+      title: `OmniChat – ${config.displayName || this.key}`,
+      autoHideMenuBar: true,
+      webPreferences: {
+        preload: path.join(__dirname, 'agentPreload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        partition: `persist:omnichat-${this.key}`,
+        sandbox: false
+      }
+    });
+
+    agentWin.webContents.setWindowOpenHandler(({ url }) => {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    });
+
+    agentWin.on('close', (event) => {
+      event.preventDefault();
+      agentWin.hide();
+      updateAgentStatus(this.key, { visible: false });
+    });
+
+    agentWin.on('hide', () => updateAgentStatus(this.key, { visible: false }));
+    agentWin.on('focus', () => updateAgentStatus(this.key, { visible: true }));
+    agentWin.on('blur', () => updateAgentStatus(this.key, { visible: false }));
+
+    agentWin.webContents.on('did-start-loading', () => {
+      updateAgentStatus(this.key, { status: 'loading' });
+    });
+
+    agentWin.webContents.on('did-finish-load', () => {
+      this.lastUrl = agentWin.webContents.getURL();
+      updateAgentStatus(this.key, { status: 'ready', url: this.lastUrl });
+    });
+
+    agentWin.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+      updateAgentStatus(this.key, {
+        status: 'error',
+        error: `${errorDescription || errorCode}`,
+        url: validatedURL || this.lastUrl
+      });
+    });
+
+    const target = config.home || (Array.isArray(config.patterns) && config.patterns.length ? config.patterns[0].replace('*', '') : '');
+    if (target) {
+      updateAgentStatus(this.key, { status: 'loading' });
+      await agentWin.loadURL(target);
+    } else {
+      await agentWin.loadURL('about:blank');
+      updateAgentStatus(this.key, { status: 'ready', url: 'about:blank' });
+    }
+
+    this.window = agentWin;
+    return agentWin;
+  }
+
+  async show() {
+    const win = await this.ensureWindow();
+    win.show();
+    win.focus();
+    updateAgentStatus(this.key, { visible: true });
+  }
+
+  hide() {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.hide();
+    }
+    updateAgentStatus(this.key, { visible: false });
+  }
+
+  async runTask(taskName, context = {}) {
+    const job = this.queue.then(async () => {
+      const config = this.getConfig();
+      if (!config) {
+        throw new Error('unknown_agent');
+      }
+      const win = await this.ensureWindow();
+      const script = createDomScript(config, taskName, context, appState.settings);
+      return win.webContents.executeJavaScript(script, true);
+    });
+
+    this.queue = job.then(() => undefined, () => undefined);
+    return job;
+  }
+
+  destroy() {
+    this.destroyed = true;
+    if (this.window && !this.window.isDestroyed()) {
+      const win = this.window;
+      this.window = null;
+      win.removeAllListeners('close');
+      win.destroy();
+    }
+    updateAgentStatus(this.key, { status: 'removed', visible: false });
+  }
+}
+
+const selectorStore = new JsonStore(SELECTOR_PATH, DEFAULT_SELECTORS);
+const settingsStore = new JsonStore(SETTINGS_PATH, DEFAULT_SETTINGS);
+
+const agentSessions = new Map();
+const agentStatus = new Map();
+const logBuffer = [];
+
+const appState = {
+  mainWindow: null,
+  selectors: JSON.parse(JSON.stringify(DEFAULT_SELECTORS)),
+  settings: { ...DEFAULT_SETTINGS }
+};
+
 function ensureDirectories() {
   [INSTALL_ROOT, CONFIG_ROOT, LOG_ROOT].forEach((dir) => {
     if (!fs.existsSync(dir)) {
@@ -119,48 +430,197 @@ function ensureFirstRunGuide() {
   }
 }
 
-function loadSelectors() {
-  try {
-    if (!fs.existsSync(SELECTOR_PATH)) {
-      fs.writeFileSync(SELECTOR_PATH, JSON.stringify(DEFAULT_SELECTORS, null, 2), 'utf8');
-    }
-    const raw = fs.readFileSync(SELECTOR_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed;
-  } catch (error) {
-    console.error('Failed to load selectors', error);
-    return JSON.parse(JSON.stringify(DEFAULT_SELECTORS));
+function updateAgentStatus(key, patch) {
+  const selector = appState.selectors[key] || {};
+  const current = agentStatus.get(key) || {
+    key,
+    displayName: selector.displayName || key,
+    status: 'idle',
+    visible: false
+  };
+  const next = {
+    ...current,
+    ...patch,
+    displayName: selector.displayName || current.displayName || key
+  };
+  agentStatus.set(key, next);
+  if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+    appState.mainWindow.webContents.send('agent:status', next);
   }
 }
 
-function loadSettings() {
-  try {
-    if (!fs.existsSync(SETTINGS_PATH)) {
-      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(DEFAULT_SETTINGS, null, 2), 'utf8');
-      return { ...DEFAULT_SETTINGS };
-    }
-    const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed };
-  } catch (error) {
-    console.error('Failed to load settings', error);
-    return { ...DEFAULT_SETTINGS };
+function broadcastAgentSnapshot() {
+  const payload = Array.from(agentStatus.values()).map((entry) => {
+    const selector = appState.selectors[entry.key] || {};
+    return {
+      ...entry,
+      displayName: selector.displayName || entry.displayName || entry.key
+    };
+  });
+  if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+    appState.mainWindow.webContents.send('agent:status:init', payload);
   }
 }
 
-function saveSelectors(data) {
-  selectors = data;
-  fs.writeFileSync(SELECTOR_PATH, JSON.stringify(selectors, null, 2), 'utf8');
-  broadcastStatus();
+function refreshAgentSessions() {
+  const keys = Object.keys(appState.selectors);
+  keys.forEach((key) => {
+    if (!agentSessions.has(key)) {
+      const session = new AgentSession(key, () => appState.selectors[key]);
+      agentSessions.set(key, session);
+    } else {
+      agentSessions.get(key).updateConfig();
+    }
+    updateAgentStatus(key, {});
+  });
+
+  for (const key of Array.from(agentSessions.keys())) {
+    if (!appState.selectors[key]) {
+      const session = agentSessions.get(key);
+      session.destroy();
+      agentSessions.delete(key);
+      agentStatus.delete(key);
+    }
+  }
+
+  broadcastAgentSnapshot();
 }
 
-function saveSettings(data) {
-  settings = { ...settings, ...data };
-  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2), 'utf8');
+function getAgentSession(key) {
+  if (!agentSessions.has(key)) {
+    const config = appState.selectors[key];
+    if (!config) {
+      throw new Error('unknown_agent');
+    }
+    const session = new AgentSession(key, () => appState.selectors[key]);
+    agentSessions.set(key, session);
+    updateAgentStatus(key, {});
+  }
+  return agentSessions.get(key);
+}
+
+function createMainWindow() {
+  const mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    title: APP_NAME,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  mainWindow.on('closed', () => {
+    appState.mainWindow = null;
+  });
+
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  appState.mainWindow = mainWindow;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function recordLog(entry) {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${entry}`;
+  logBuffer.push(line);
+  if (logBuffer.length > 5000) {
+    logBuffer.shift();
+  }
+  if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+    appState.mainWindow.webContents.send('log:push', line);
+  }
+  const logFile = path.join(LOG_ROOT, `${new Date().toISOString().slice(0, 10)}.log`);
+  fs.appendFile(logFile, line + '\n', () => {});
+}
+
+async function sendToAgent(key, text) {
+  const session = getAgentSession(key);
+  const min = Number(appState.settings.delayMin) || DEFAULT_SETTINGS.delayMin;
+  const max = Number(appState.settings.delayMax) || min;
+  const wait = Math.max(min, Math.floor(min + Math.random() * Math.max(0, max - min)));
+  if (wait > 0) {
+    await delay(wait);
+  }
+
+  try {
+    const result = await session.runTask('sendMessage', { text });
+    if (!result || !result.ok) {
+      throw new Error(result ? result.reason || 'send' : 'send');
+    }
+    recordLog(`${key}: message sent via ${result.via}`);
+    return result;
+  } catch (error) {
+    recordLog(`${key}: send failed (${error.message || error})`);
+    if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+      appState.mainWindow.webContents.send('app:toast', `${key}.${error.message || 'send'} selectors need attention.`);
+    }
+    throw error;
+  }
+}
+
+async function readMessages(key) {
+  try {
+    const session = getAgentSession(key);
+    const result = await session.runTask('readMessages', { limit: appState.settings.messageLimit });
+    if (!result || !result.ok) {
+      throw new Error(result ? result.reason || 'read' : 'read');
+    }
+    return result.messages || [];
+  } catch (error) {
+    recordLog(`${key}: read failed (${error.message || error})`);
+    if (appState.mainWindow && !appState.mainWindow.isDestroyed()) {
+      appState.mainWindow.webContents.send('app:toast', `${key}.${error.message || 'read'} selectors need attention.`);
+    }
+    return [];
+  }
+}
+
+function withTrailingSlash(url) {
+  if (!url) return '';
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`HTTP ${response.status}: ${text.slice(0, 140)}`);
+  }
+  return await response.json();
+}
+
+function buildComfyAssetURL(host, asset) {
+  const base = withTrailingSlash(host || DEFAULT_SETTINGS.comfyHost);
+  const url = new URL('view', base);
+  url.searchParams.set('filename', asset.filename || '');
+  url.searchParams.set('type', asset.type || 'output');
+  url.searchParams.set('subfolder', asset.subfolder || '');
+  return url.toString();
+}
+
+function guessMime(filename = '') {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.mp4')) return 'video/mp4';
+  if (lower.endsWith('.webm')) return 'video/webm';
+  return 'application/octet-stream';
 }
 
 async function listComfyHistory(limit = 8, hostOverride) {
-  const host = hostOverride || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const host = hostOverride || appState.settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
   const url = new URL('history', withTrailingSlash(host));
   const payload = await fetchJson(url);
   const entries = Object.entries(payload || {})
@@ -208,7 +668,7 @@ async function listComfyHistory(limit = 8, hostOverride) {
 }
 
 async function fetchComfyAsset(asset) {
-  const host = asset.host || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const host = asset.host || appState.settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
   const assetUrl = buildComfyAssetURL(host, asset);
   const response = await fetch(assetUrl);
   if (!response.ok) {
@@ -221,10 +681,10 @@ async function fetchComfyAsset(asset) {
 }
 
 async function runComfyWorkflowFromFile(hostOverride) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  if (!appState.mainWindow || appState.mainWindow.isDestroyed()) {
     return { ok: false, error: 'window_closed' };
   }
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const result = await dialog.showOpenDialog(appState.mainWindow, {
     title: 'Choose ComfyUI workflow',
     filters: [{ name: 'JSON Files', extensions: ['json'] }],
     properties: ['openFile']
@@ -232,7 +692,7 @@ async function runComfyWorkflowFromFile(hostOverride) {
   if (result.canceled || !result.filePaths.length) {
     return { ok: false, canceled: true };
   }
-  const host = hostOverride || settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
+  const host = hostOverride || appState.settings.comfyHost || DEFAULT_SETTINGS.comfyHost;
   const filePath = result.filePaths[0];
   const workflow = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   const url = new URL('prompt', withTrailingSlash(host));
@@ -249,14 +709,14 @@ async function runComfyWorkflowFromFile(hostOverride) {
 }
 
 async function listOllamaModels(hostOverride) {
-  const host = hostOverride || settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
+  const host = hostOverride || appState.settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
   const url = new URL('api/tags', withTrailingSlash(host));
   const data = await fetchJson(url);
   return Array.isArray(data?.models) ? data.models.map((model) => model.name) : [];
 }
 
 async function generateWithOllama({ model, prompt, host }) {
-  const ollamaHost = host || settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
+  const ollamaHost = host || appState.settings.ollamaHost || DEFAULT_SETTINGS.ollamaHost;
   const url = new URL('api/generate', withTrailingSlash(ollamaHost));
   const response = await fetch(url, {
     method: 'POST',
@@ -300,7 +760,7 @@ async function generateWithOllama({ model, prompt, host }) {
           output += parsed.response;
         }
       } catch (error) {
-        // ignore tail parse errors
+        // ignore
       }
     }
   } else {
@@ -311,290 +771,37 @@ async function generateWithOllama({ model, prompt, host }) {
   return output;
 }
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    title: 'OmniChat',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-}
-
-function getAgentConfig(key) {
-  const data = selectors[key];
-  if (!data) {
-    throw new Error(`Unknown agent ${key}`);
-  }
-  return data;
-}
-
-async function ensureAgentWindow(key) {
-  if (agentWindows.has(key)) {
-    return agentWindows.get(key);
-  }
-  const config = getAgentConfig(key);
-  const agentWin = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    show: false,
-    title: `OmniChat – ${config.displayName}`,
-    webPreferences: {
-      preload: path.join(__dirname, 'agentPreload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      partition: `persist:omnichat-${key}`
-    }
-  });
-
-  agentWin.on('close', (event) => {
-    event.preventDefault();
-    agentWin.hide();
-  });
-
-  agentWin.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  agentWin.webContents.on('did-finish-load', () => {
-    updateAgentState(key, { status: 'ready', url: agentWin.webContents.getURL() });
-  });
-
-  agentWin.on('focus', () => updateAgentState(key, { visible: true }));
-  agentWin.on('hide', () => updateAgentState(key, { visible: false }));
-
-  agentWindows.set(key, agentWin);
-  updateAgentState(key, { status: 'loading' });
-  await agentWin.loadURL(config.home);
-  return agentWin;
-}
-
-function updateAgentState(key, patch) {
-  const existing = agentState.get(key) || {};
-  const next = { ...existing, ...patch, key };
-  agentState.set(key, next);
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('agent:status', next);
-  }
-}
-
-function broadcastStatus() {
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    const payload = Object.keys(selectors).map((key) => ({
-      key,
-      ...(agentState.get(key) || {}),
-      displayName: selectors[key].displayName || key
-    }));
-    mainWindow.webContents.send('agent:status:init', payload);
-  }
-}
-
-async function withAgentDOM(key, task) {
-  const config = getAgentConfig(key);
-  const agentWin = await ensureAgentWindow(key);
-  return agentWin.webContents.executeJavaScript(`(function(){
-    const cfg = ${JSON.stringify({
-      input: config.input,
-      sendButton: config.sendButton,
-      messageContainer: config.messageContainer
-    })};
-    const findFirst = (selectors) => {
-      if (!selectors) return null;
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (el) return el;
-      }
-      return null;
-    };
-    return (${task.toString()})(cfg, ${settings.messageLimit});
-  })();`, true);
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function recordLog(entry) {
-  const timestamp = new Date().toISOString();
-  const row = `[${timestamp}] ${entry}`;
-  logBuffer.push(row);
-  if (logBuffer.length > 5000) {
-    logBuffer.shift();
-  }
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('log:push', row);
-  }
-  const logFile = path.join(LOG_ROOT, `${new Date().toISOString().slice(0, 10)}.log`);
-  fs.appendFile(logFile, row + '\n', () => {});
-}
-
-async function sendToAgent(key, text) {
-  const min = Number(settings.delayMin) || 0;
-  const max = Number(settings.delayMax) || min;
-  const wait = Math.max(min, Math.floor(min + Math.random() * Math.max(0, max - min)));
-  await delay(wait);
-  try {
-    const result = await withAgentDOM(key, function (cfg) {
-      const findFirst = (selectors) => {
-        if (!selectors) return null;
-        for (const selector of selectors) {
-          const el = document.querySelector(selector);
-          if (el) return el;
-        }
-        return null;
-      };
-      const input = findFirst(cfg.input);
-      if (!input) {
-        return { ok: false, reason: 'input' };
-      }
-      const valueProp = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), 'value');
-      if (valueProp && valueProp.set) {
-        valueProp.set.call(input, text);
-      } else {
-        input.value = text;
-      }
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.focus();
-      const button = findFirst(cfg.sendButton);
-      if (button) {
-        button.click();
-        return { ok: true, via: 'button' };
-      }
-      const event = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true });
-      input.dispatchEvent(event);
-      return { ok: true, via: 'enter' };
-    });
-    if (!result || !result.ok) {
-      await withAgentDOM(key, function (cfg) {
-        const findFirst = (selectors) => {
-          if (!selectors) return null;
-          for (const selector of selectors) {
-            const el = document.querySelector(selector);
-            if (el) return el;
-          }
-          return null;
-        };
-        const input = findFirst(cfg.input);
-        if (input) {
-          input.focus();
-        }
-        let banner = document.getElementById('__omnichat_hint');
-        if (!banner) {
-          banner = document.createElement('div');
-          banner.id = '__omnichat_hint';
-          banner.style.position = 'fixed';
-          banner.style.bottom = '16px';
-          banner.style.right = '16px';
-          banner.style.padding = '12px 18px';
-          banner.style.background = '#1f2937';
-          banner.style.color = '#ffffff';
-          banner.style.fontFamily = 'Segoe UI, sans-serif';
-          banner.style.borderRadius = '6px';
-          banner.style.zIndex = '999999';
-          document.body.appendChild(banner);
-        }
-        banner.textContent = 'Press Enter to send from OmniChat.';
-        setTimeout(() => banner && banner.remove(), 4000);
-        return { ok: false };
-      });
-      throw new Error(result ? result.reason : 'send');
-    }
-    recordLog(`${key}: message sent via ${result.via}`);
-    return result;
-  } catch (error) {
-    recordLog(`${key}: send failed (${error.message})`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:toast', `${key}.${error.message || 'send'} selectors need attention.`);
-    }
-    throw error;
-  }
-}
-
-async function readMessages(key) {
-  try {
-    const messages = await withAgentDOM(key, function (cfg, limit) {
-      const findFirst = (selectors) => {
-        if (!selectors) return null;
-        for (const selector of selectors) {
-          const el = document.querySelector(selector);
-          if (el) return el;
-        }
-        return null;
-      };
-      const container = findFirst(cfg.messageContainer);
-      if (!container) {
-        return { ok: false, reason: 'messageContainer' };
-      }
-      const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, null);
-      const transcript = [];
-      while (walker.nextNode()) {
-        const node = walker.currentNode;
-        if (node.childElementCount === 0) {
-          const text = node.textContent.trim();
-          if (text) {
-            transcript.push(text);
-          }
-        }
-      }
-      const deduped = [];
-      for (const line of transcript) {
-        if (!deduped.length || deduped[deduped.length - 1] !== line) {
-          deduped.push(line);
-        }
-      }
-      return { ok: true, messages: deduped.slice(-limit) };
-    });
-    if (!messages.ok) {
-      throw new Error(messages.reason);
-    }
-    return messages.messages;
-  } catch (error) {
-    recordLog(`${key}: read failed (${error.message})`);
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:toast', `${key}.${error.message || 'read'} selectors need attention.`);
-    }
-    return [];
-  }
-}
-
 ipcMain.handle('app:bootstrap', async () => {
   ensureDirectories();
   ensureFirstRunGuide();
-  selectors = loadSelectors();
-  settings = loadSettings();
-  broadcastStatus();
+  appState.selectors = selectorStore.load();
+  appState.settings = settingsStore.load();
+  refreshAgentSessions();
   return {
-    selectors,
-    settings,
+    selectors: appState.selectors,
+    settings: appState.settings,
     log: logBuffer.slice(-200)
   };
 });
 
 ipcMain.handle('selectors:save', async (_event, payload) => {
-  saveSelectors(payload);
+  appState.selectors = payload || {};
+  selectorStore.save(appState.selectors);
+  refreshAgentSessions();
   return { ok: true };
 });
 
 ipcMain.handle('settings:save', async (_event, payload) => {
-  saveSettings(payload);
+  appState.settings = { ...appState.settings, ...(payload || {}) };
+  settingsStore.save(appState.settings);
   return { ok: true };
 });
 
 ipcMain.handle('selectors:importFile', async () => {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  if (!appState.mainWindow || appState.mainWindow.isDestroyed()) {
     return { ok: false, error: 'window_closed' };
   }
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const result = await dialog.showOpenDialog(appState.mainWindow, {
     title: 'Import selectors.json',
     filters: [{ name: 'JSON Files', extensions: ['json'] }],
     properties: ['openFile']
@@ -606,18 +813,20 @@ ipcMain.handle('selectors:importFile', async () => {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     const data = JSON.parse(raw);
-    saveSelectors(data);
-    return { ok: true, selectors };
+    appState.selectors = data;
+    selectorStore.save(appState.selectors);
+    refreshAgentSessions();
+    return { ok: true, selectors: appState.selectors };
   } catch (error) {
     return { ok: false, error: error.message };
   }
 });
 
 ipcMain.handle('selectors:exportFile', async () => {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  if (!appState.mainWindow || appState.mainWindow.isDestroyed()) {
     return { ok: false, error: 'window_closed' };
   }
-  const result = await dialog.showSaveDialog(mainWindow, {
+  const result = await dialog.showSaveDialog(appState.mainWindow, {
     title: 'Export selectors.json',
     filters: [{ name: 'JSON Files', extensions: ['json'] }],
     defaultPath: path.join(app.getPath('documents'), 'omnichat-selectors.json')
@@ -625,8 +834,13 @@ ipcMain.handle('selectors:exportFile', async () => {
   if (result.canceled || !result.filePath) {
     return { ok: false, canceled: true };
   }
-  fs.writeFileSync(result.filePath, JSON.stringify(selectors, null, 2), 'utf8');
-  return { ok: true, path: result.filePath };
+  try {
+    selectorStore.save(appState.selectors);
+    fs.copyFileSync(SELECTOR_PATH, result.filePath);
+    return { ok: true, path: result.filePath };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
 });
 
 ipcMain.handle('config:openFolder', async () => {
@@ -635,23 +849,20 @@ ipcMain.handle('config:openFolder', async () => {
 });
 
 ipcMain.handle('agent:ensure', async (_event, key) => {
-  await ensureAgentWindow(key);
-  return agentState.get(key) || { key };
+  const session = getAgentSession(key);
+  await session.ensureWindow();
+  return agentStatus.get(key) || { key };
 });
 
 ipcMain.handle('agent:connect', async (_event, key) => {
-  const win = await ensureAgentWindow(key);
-  win.show();
-  win.focus();
-  updateAgentState(key, { visible: true });
+  const session = getAgentSession(key);
+  await session.show();
   return true;
 });
 
 ipcMain.handle('agent:hide', async (_event, key) => {
-  if (agentWindows.has(key)) {
-    const win = agentWindows.get(key);
-    win.hide();
-    updateAgentState(key, { visible: false });
+  if (agentSessions.has(key)) {
+    agentSessions.get(key).hide();
   }
   return true;
 });
@@ -661,25 +872,17 @@ ipcMain.handle('agent:read', async (_event, key) => {
 });
 
 ipcMain.handle('agent:send', async (_event, payload) => {
-  const { key, text } = payload;
-  await ensureAgentWindow(key);
+  const { key, text } = payload || {};
+  await getAgentSession(key).ensureWindow();
   const messages = await readMessages(key);
-  await sendToAgent(key, text);
+  await sendToAgent(key, text || '');
   return { ok: true, previous: messages };
 });
 
 ipcMain.handle('agent:captureSelection', async (_event, key) => {
   try {
-    const result = await withAgentDOM(key, function () {
-      const selection = window.getSelection();
-      const text = selection ? selection.toString().trim() : '';
-      return {
-        ok: true,
-        selection: text,
-        title: document.title,
-        url: location.href
-      };
-    });
+    const session = getAgentSession(key);
+    const result = await session.runTask('captureSelection', {});
     return result;
   } catch (error) {
     return { ok: false, error: error.message };
@@ -688,16 +891,8 @@ ipcMain.handle('agent:captureSelection', async (_event, key) => {
 
 ipcMain.handle('agent:snapshot', async (_event, { key, limit = 2000 }) => {
   try {
-    const result = await withAgentDOM(key, function (_cfg, _limit) {
-      const max = Number(_limit) || 2000;
-      const text = document.body ? document.body.innerText || '' : '';
-      return {
-        ok: true,
-        title: document.title,
-        url: location.href,
-        content: text.slice(0, max)
-      };
-    });
+    const session = getAgentSession(key);
+    const result = await session.runTask('snapshotPage', { limit });
     return result;
   } catch (error) {
     return { ok: false, error: error.message };
@@ -705,10 +900,10 @@ ipcMain.handle('agent:snapshot', async (_event, { key, limit = 2000 }) => {
 });
 
 ipcMain.handle('log:export', async (_event, payload) => {
-  if (!mainWindow || mainWindow.isDestroyed()) {
+  if (!appState.mainWindow || appState.mainWindow.isDestroyed()) {
     return { ok: false };
   }
-  const dialogResult = await dialog.showSaveDialog(mainWindow, {
+  const dialogResult = await dialog.showSaveDialog(appState.mainWindow, {
     title: 'Export OmniChat Log',
     filters: [{ name: 'Text Files', extensions: ['txt'] }],
     defaultPath: path.join(app.getPath('documents'), `omnichat-log-${Date.now()}.txt`)
@@ -716,7 +911,7 @@ ipcMain.handle('log:export', async (_event, payload) => {
   if (dialogResult.canceled || !dialogResult.filePath) {
     return { ok: false };
   }
-  fs.writeFileSync(dialogResult.filePath, payload, 'utf8');
+  fs.writeFileSync(dialogResult.filePath, payload || '', 'utf8');
   return { ok: true, path: dialogResult.filePath };
 });
 
@@ -724,9 +919,10 @@ ipcMain.handle('settings:resetAgent', async (_event, key) => {
   if (!DEFAULT_SELECTORS[key]) {
     return { ok: false, error: 'unknown' };
   }
-  selectors[key] = JSON.parse(JSON.stringify(DEFAULT_SELECTORS[key]));
-  saveSelectors(selectors);
-  return { ok: true, selectors };
+  appState.selectors[key] = JSON.parse(JSON.stringify(DEFAULT_SELECTORS[key]));
+  selectorStore.save(appState.selectors);
+  refreshAgentSessions();
+  return { ok: true, selectors: appState.selectors };
 });
 
 ipcMain.handle('local:comfy:list', async (_event, options = {}) => {
@@ -766,10 +962,10 @@ ipcMain.handle('local:ollama:models', async (_event, hostOverride) => {
   }
 });
 
-ipcMain.handle('local:ollama:generate', async (_event, payload) => {
+ipcMain.handle('local:ollama:generate', async (_event, payload = {}) => {
   try {
-    const text = await generateWithOllama(payload || {});
-    return { ok: true, text };
+    const response = await generateWithOllama(payload);
+    return { ok: true, text: response };
   } catch (error) {
     return { ok: false, error: error.message };
   }
@@ -778,15 +974,16 @@ ipcMain.handle('local:ollama:generate', async (_event, payload) => {
 app.whenReady().then(() => {
   ensureDirectories();
   ensureFirstRunGuide();
-  selectors = loadSelectors();
-  settings = loadSettings();
-  createWindow();
+  appState.selectors = selectorStore.load();
+  appState.settings = settingsStore.load();
+  refreshAgentSessions();
+  createMainWindow();
+});
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createMainWindow();
+  }
 });
 
 app.on('window-all-closed', () => {

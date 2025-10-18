@@ -219,9 +219,23 @@ function renderAgents() {
     status.className = 'agent-status';
     const data = state.agents[key];
     const statusBits = [];
-    if (data && data.status) statusBits.push(data.status);
-    if (data && data.visible) statusBits.push('visible');
-    if (data && data.url) statusBits.push(new URL(data.url).hostname);
+    if (data && data.status) {
+      statusBits.push(data.status);
+    }
+    if (data && data.visible) {
+      statusBits.push('visible');
+    }
+    if (data && data.error) {
+      statusBits.push(`error: ${data.error}`);
+    }
+    if (data && data.url) {
+      try {
+        const url = new URL(data.url);
+        statusBits.push(url.hostname);
+      } catch (error) {
+        statusBits.push(data.url);
+      }
+    }
     status.textContent = statusBits.join(' · ') || 'offline';
 
     const actions = document.createElement('div');
